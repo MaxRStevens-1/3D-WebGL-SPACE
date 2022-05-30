@@ -1,0 +1,62 @@
+# Blender MTL File: 'None'
+# Material Count: 5
+
+newmtl bacaklar
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump D:\\Ezgi\\substance painter export\\rocket\\bacaklar_normal.png
+map_Kd C:\\Users\\Max\\Downloads\\source\\rocket 2\\bacaklar_baseColor.png
+
+newmtl gövde
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump D:\\Ezgi\\substance painter export\\rocket\\gövde_normal.png
+map_Kd C:\\Users\\Max\\Downloads\\source\\rocket 2\\gövde_baseColor.png
+
+newmtl head
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump C:\\Users\\Max\\Downloads\\source\\rocket 2\\head_normal.png
+map_Kd C:\\Users\\Max\\Downloads\\source\\rocket 2\\head_baseColor.png
+
+newmtl motor
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump D:\\Ezgi\\substance painter export\\rocket\\motor_normal.png
+map_Kd D:\\Ezgi\\substance painter export\\rocket\\motor_baseColor.png
+
+newmtl window
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump D:\\Ezgi\\substance painter export\\rocket\\window_normal.png
+map_Kd D:\\Ezgi\\substance painter export\\rocket\\window_baseColor.png

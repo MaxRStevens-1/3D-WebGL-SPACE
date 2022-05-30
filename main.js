@@ -211,27 +211,6 @@ async function readObjFromFile (file) {
   return obj
 }
 
-/**
- * Does what it says on the tin
- * @param {*} image
- * @returns
- *
-function imageToGrayscale(image) {
-  const canvas = document.createElement('canvas')
-  canvas.width = image.width
-  canvas.height = image.height
-
-  const context = canvas.getContext('2d')
-  context.drawImage(image, 0, 0, image.width, image.height)
-  const pixels = context.getImageData(0, 0, image.width, image.height)
-
-  const grays = new Array(image.width * image.height)
-  for (let i = 0; i < image.width * image.height; ++i) {
-    grays[i] = pixels.data[i * 4]
-  }
-
-  return grays
-}*/
 
 async function initialize() {
   canvas = document.getElementById('canvas')
@@ -364,14 +343,7 @@ void main() {
 }
 
 async function initializeObjects() {
-  const names = ['./Andross_corrected.obj']
-  console.log (camera.position)
-  const center = camera.position
 
-  let lines = await readObjFromFile ('./Andross_corrected.obj')
-  const andross = createObject(lines)
-  let pos = Matrix4.translate(center.x, center.y + 400, center.z - 50)
-  pos = pos.multiplyMatrix(Matrix4.scale(10, 10, 10))
 
   // GENERATE PLAYER OBJECT
   let ship = readBoxen ("0 0 0   4 4 4   1 0 1", shaderProgram)[0]
@@ -387,15 +359,11 @@ async function initializeObjects() {
   objectPositions.push( Matrix4.translate (ship_position.x, 
                                           ship_position.y, 
                                           ship_position.z))
-  
-
-  objects.push         (andross)
-  objectPositions.push (pos)
 }
 
 async function initCollectibles() {
   // credit to ezgi bakim
-  const name = './super-nintendo.obj';
+  const name = './spaceship.obj';
 
   let lines = await readObjFromFile(name);
 
