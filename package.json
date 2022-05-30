@@ -1,0 +1,14 @@
+{
+  "name": "instance-rendering",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "vite --open",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "jest": "^27.4.7",
+    "vite": "^2.9.9"
+  }
+}
