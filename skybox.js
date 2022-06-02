@@ -1,12 +1,13 @@
 
 import { VertexAttributes } from './vertex-attributes'
 import { ShaderProgram } from './shader-program'
+import { generateCube } from './box_gen'; 
 /**
  * returns minimal gemortry cube with inward pointing faces
  * @returns the attributes of a skybox cube
  */
 export function generateSkybox() {
-    const positions = [
+  const positions = [
       -1, -1,  1,
        1, -1,  1,
       -1,  1,  1,
@@ -31,10 +32,14 @@ export function generateSkybox() {
       0, 1, 5,
       0, 5, 4,
     ];
-  
+    //     [positions, normals, faces];
     const attributes = new VertexAttributes();
-    attributes.addAttribute('position', 8, 3, positions);
+
+    attributes.addAttribute('position', positions.length / 3, 3, positions)
+    //attributes.addAttribute ('normal', normals.length / 3, 3, normals)
     attributes.addIndices(indices);
+
+
   
     return attributes;
   }
@@ -51,13 +56,15 @@ export function generateSkybox() {
    */
   export async function loadCubemap(directoryUrl, extension, textureUnit = gl.TEXTURE0) {
     // the names of the images
-    //   const faces = ['posx', 'negx', 'posy', 'negy', 'posz', 'negz'];
-    const faces = ['bkg1_right', 'bkg1_left', 'bkg1_top', 
-                  'bkg1_bot', 'bkg1_front', 'bkg1_back'];
 
+    const faces = ['posx', 'negx', 'posy', 'negy', 'posz', 'negz'];
+    //const faces = ['bkg1_right', 'bkg1_left', 'bkg1_top', 
+    //              'bkg1_bot', 'bkg1_front', 'bkg1_back'];
+    //const faces = ['right', 'left', 'top', 'bot', 'front', 'back']
   
     const images = await Promise.all(faces.map(face => {
       const url = `${directoryUrl}/${face}.${extension}`;
+      console.log (url)
       return readImage(url);
     }));
   
@@ -91,6 +98,7 @@ export function generateSkybox() {
     out vec3 mixTexPosition;
     
     void main() {
+      gl_Position = clipFromEye * eyeFromWorld * vec4(position, 1.0);
       gl_Position = clipFromEye * eyeFromWorld * worldFromModel * vec4(position, 1.0);
       mixTexPosition = position;
     }
@@ -101,14 +109,46 @@ export function generateSkybox() {
     out vec4 fragmentColor;
     
     void main() {
-      fragmentColor = texture(skybox, mixTexPosition);
+      fragmentColor = texture(skybox, mixTexPosition);  
     }
     `;
-
+;
     let shaderProgram = new ShaderProgram(vertexSource, fragmentSource)
     return shaderProgram
   }
 
+  export function ship_shader () {
+    const vertexSource = `
+    uniform mat4 clipFromEye;
+    uniform mat4 worldFromModel;
+    uniform mat4 eyeFromWorld;
+    in vec3 position;
+    in vec3 normal;
+    out vec3 mixWorldPosition;
+    out vec3 mixWorldNormal;
+    void main() {
+      gl_Position = clipFromEye * eyeFromWorld * worldFromModel * vec4(position, 1.0);
+      mixWorldPosition = (eyeFromWorld * worldFromModel * vec4(position, 1.0)).xyz;
+      mixWorldNormal  = (eyeFromWorld * worldFromModel * vec4(normal.x, -normal.y, normal.z, 0)).xyz;
+    }
+    `;
+    const fragmentSource = `
+    uniform samplerCube skybox;
+    uniform vec3 worldEyePosition;
+    in vec3 mixWorldPosition;
+    in vec3 mixWorldNormal;
+    out vec4 fragmentColor;
+    
+      void main() {
+        vec3 eyeToPosition = normalize(mixWorldPosition - worldEyePosition);
+        vec3 normal = normalize(mixWorldNormal);
+        vec3 reflection = reflect(eyeToPosition, normal);
+        fragmentColor = texture(skybox, reflection);
+      }
+    `;
+    let shaderProgram = new ShaderProgram(vertexSource, fragmentSource)
+    return shaderProgram
+  }
   
 /**
  * self explanitory

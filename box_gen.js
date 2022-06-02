@@ -39,6 +39,7 @@ export function readBoxen (box_string, shaderProgram, box_size) {
     
     return box_renders
   }
+
  
   /**
    * takes in a boxes height, width, depth, and its position in space
@@ -48,9 +49,9 @@ export function readBoxen (box_string, shaderProgram, box_size) {
    * @param {*} offsetX 
    * @param {*} offsetY 
    * @param {*} offsetZ 
-   * @returns 
+   * @returns an array with [positions, normals, faces]
    */
-  function generateCube(height, width, depth, offsetX, offsetY, offsetZ) {
+  export function generateCube(height, width, depth, offsetX, offsetY, offsetZ) {
     let positions = [];
     let normals = [];
     // minimum # of points to construct a cube

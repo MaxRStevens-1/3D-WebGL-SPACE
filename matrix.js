@@ -3,27 +3,12 @@ import { Vector4 } from './vector'
 export class Matrix4 {
   constructor() {
     this.matrix = new Float32Array(16)
-    /**
-     * [ matrix[0] matrix[4] matrix[8]  matrix[12] ]
-     * [ matrix[1] matrix[5] matrix[9]  matrix[13] ]
-     * [ matrix[2] matrix[6] matrix[10] matrix[14] ]
-     * [ matrix[3] matrix[7] matrix[11] matrix[15] ]
-     */
   }
 
   get(row, col) {
     // col major order
-    /**
 
 
-         * row  0, col: 0, ind = matrix[0]
-         * row: 1, col: 0, ind = matrix[1]
-         * row: 3, col: 2, ind = matrix[11]
-         * row: 2, col: 3, ind = matrix[14]
-         * row: 3, col: 3, ind = matrix[15]
-         * 
-         * col * 4 + row
-         */
     return this.matrix[col * 4 + row]
   }
 

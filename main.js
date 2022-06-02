@@ -8,8 +8,8 @@ import { Terrain } from './terrain'
 import { Trimesh, TrimeshVao } from './trimesh'
 import { Camera, SlideCamera } from './camera'
 import { reserveDepthTexture, initializeDepthFbo, initializeDepthProgram, createTexture2d} from './shadow'
-import {readBoxen} from './box_gen'
-import { generateSkybox, loadCubemap, skybox_shader_program } from './skybox'
+import {readBoxen, generateCube} from './box_gen'
+import { generateSkybox, loadCubemap, skybox_shader_program, ship_shader} from './skybox'
 
 
 let canvas
@@ -25,6 +25,8 @@ let turnDelta = 1
 let skyboxShaderProgram
 let skyboxVao
 
+// MIRROR SURFACE SHADER
+let shipShader
 
 // SHADOW
 let depthTextureUnit
@@ -39,11 +41,11 @@ let lightCamera;
 let lightFromWorld;
 let clipFromLight;
 
-const albedo = [.9, .9, .9]
+const albedo = [.6, .6, .6]
 const specularColor = [.3, .8, .9];
 const diffuseColor = [.1, .6, .9];
-const shininess = 65.0;
-const ambientFactor = 0.5;
+const shininess = 80.0;
+const ambientFactor = 0.7;
 
 // OBJECTS
 const collectibles = [];
@@ -84,9 +86,10 @@ function render() {
   skyboxShaderProgram.unbind()
   gl.depthMask(true);
 
+  // SHIP AS A MIRROR DRAW
+
 
   shaderProgram.bind()
-
   // Bling-Fong uniforms init
   shaderProgram.setUniform3f('albedo', albedo[0], albedo[1], albedo[2])
   shaderProgram.setUniform3f('specularColor', specularColor[0], specularColor[1], specularColor[2])
@@ -110,24 +113,7 @@ function render() {
   // RESET TEXTURE
   shaderProgram.setUniform1i('normTexture', 0);
 
-  // DRAW COLLECTIBLES
-  shaderProgram.setUniform3f('albedo', .9, .5, .3)
-  shaderProgram.setUniform3f('specularColor', .8, .9, .1)
-  shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-  shaderProgram.setUniform1f('shininess', 90)
-  shaderProgram.setUniform1f('ambientFactor', .4)
-  for (let i = 0; i < collectibles.length; i++) {
-    const collectible = collectibles[i]
-    const pos = collectiblePositions[i]
-    // SET AS ATTRIBUTE
-    shaderProgram.setUniformMatrix4('worldFromModel', pos)
-    collectible.vao.bind()
-    collectible.vao.drawIndexed(gl.TRIANGLES)
-    collectible.vao.unbind()
-  }
-
   // DRAWS OBJECTS
-
   shaderProgram.setUniform3f('albedo', albedo[0], albedo[1], albedo[2])
   shaderProgram.setUniform3f('specularColor', specularColor[0], specularColor[1], specularColor[2])
   shaderProgram.setUniform3f('diffuseColor', diffuseColor[0], diffuseColor[1], diffuseColor[2])
@@ -143,8 +129,43 @@ function render() {
     object.vao.unbind()
   }
 
-
+  // DRAW COLLECTIBLES * AS MIRRORS*
+  /*
+  shaderProgram.setUniform3f('albedo', .9, .5, .3)
+  shaderProgram.setUniform3f('specularColor', .8, .9, .1)
+  shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
+  shaderProgram.setUniform1f('shininess', 90)
+  shaderProgram.setUniform1f('ambientFactor', .4)
+  for (let i = 0; i < collectibles.length; i++) {
+    const collectible = collectibles[i]
+    const pos = collectiblePositions[i]
+    // SET AS ATTRIBUTE
+    shaderProgram.setUniformMatrix4('worldFromModel', pos)
+    collectible.vao.bind()
+    collectible.vao.drawIndexed(gl.TRIANGLES)
+    collectible.vao.unbind()
+  }*/
   shaderProgram.unbind()
+
+  //LOOK MORE INTO THIS
+ 
+  shipShader.bind()
+  shipShader.setUniformMatrix4('worldFromModel', worldFromModel);
+  shipShader.setUniformMatrix4('clipFromEye', clipFromEye);
+  shipShader.setUniformMatrix4('eyeFromWorld', camera.eyeFromWorld);
+  shipShader.setUniform1i ('skybox', 1)
+  for (let i = 0; i < collectibles.length; i++) {
+
+    shipShader.setUniformMatrix4('worldFromModel', collectiblePositions[i]);
+    collectibles[i].vao.bind()
+    collectibles[i].vao.drawIndexed (gl.TRIANGLES)
+    collectibles[i].vao.unbind()
+  }
+  shipShader.unbind()
+  
+
+
+
 }
 
 // Shadow/Depths render function
@@ -155,9 +176,8 @@ function renderDepths(width, height, fbo) {
   gl.clear(gl.DEPTH_BUFFER_BIT);
 
   const clipFromWorld = clipFromLight.multiplyMatrix(lightFromWorld);
-
   depthProgram.bind();
-
+/*
   for (let i = 0; i < collectibles.length; i++) {
     const collectible = collectibles[i]
     const pos = collectiblePositions[i]
@@ -166,7 +186,7 @@ function renderDepths(width, height, fbo) {
     collectible.vao.bind()
     collectible.vao.drawIndexed(gl.TRIANGLES)
     collectible.vao.unbind()
-  }
+  }*/
 
   for (let i = 0; i < objects.length; i++) {
     const object = objects[i]
@@ -239,7 +259,7 @@ async function initialize() {
   let skyboxAttributes = generateSkybox()
   skyboxVao = new VertexArray (skyboxShaderProgram, skyboxAttributes)
   // load in skybox cube
-  await loadCubemap ("./bkg/blue", "png", gl.TEXTURE1)
+  await loadCubemap ("./bkg/sky", "png", gl.TEXTURE1)
   
 
   const vertexSource = `
@@ -344,7 +364,6 @@ void main() {
 
 async function initializeObjects() {
 
-
   // GENERATE PLAYER OBJECT
   let ship = readBoxen ("0 0 0   4 4 4   1 0 1", shaderProgram)[0]
   objects.push         (ship)
@@ -366,14 +385,18 @@ async function initCollectibles() {
   const name = './spaceship.obj';
 
   let lines = await readObjFromFile(name);
+  // ship to mirror shader
+  shipShader = ship_shader();
+  // **
 
   for (let i = 0; i < 5; i++) {
     // create trimesh vao object
-    const collectible = createObject(lines)
+    //const collectible = createObject(lines)
+    // SHIP 2 MIRROR
+    const collectible = createShipMirrorObject (lines, shipShader)
     collectibles.push(collectible)
-
     // create positions for collectible
-    const center = camera.position
+    const center =  new Vector3 (collectible.centroid.x, collectible.centroid.y, collectible.centroid.z)
 
     let x = Math.random() * 1000
     let z = Math.random() * 1000
@@ -383,6 +406,35 @@ async function initCollectibles() {
   }
 }
 
+/**
+ * Creates and return an trimeshVao from inputed shader
+ * @param {*} lines 
+ * @param {*} ship_shader 
+ * @returns 
+ */
+function createShipMirrorObject (lines, ship_shader) {
+  let obj_trimesh = Trimesh.readObjToJson(lines)
+
+  let obj_attributes = new VertexAttributes()
+  let positions = obj_trimesh.flat_positions()
+  let normals = obj_trimesh.flat_normals()
+  let indices = obj_trimesh.flat_indices()
+  obj_attributes.addAttribute('position', positions.length / 3, 3, positions)
+  obj_attributes.addAttribute('normal',   normals.length   / 3, 3, normals)
+  obj_attributes.addIndices  (indices)
+  let obj_vao = new VertexArray(ship_shader, obj_attributes)
+  let trivao = new TrimeshVao  (obj_trimesh.positions,
+                               obj_trimesh.normals,
+                               obj_trimesh.indices,
+                               obj_vao)
+  return trivao
+}
+
+/**
+ * Creates and returns an trimeshVao from loaded in obj file
+ * @param {*} lines 
+ * @returns 
+ */
 function createObject(lines) {
   let obj_trimesh = Trimesh.readObjToJson(lines)
 
@@ -408,8 +460,8 @@ function rotateCollectibles() {
     let pos = collectiblePositions[i]
     const centroid = collectible.centroid
     const center = new Vector3(centroid.x, 1, centroid.z)
-    pos = pos.multiplyMatrix(Matrix4.rotateAroundAxis(center, degrees))
-    collectiblePositions[i] = pos
+    //pos = pos.multiplyMatrix(Matrix4.rotateAroundAxis(center, degrees))
+    //collectiblePositions[i] = pos
   }
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
