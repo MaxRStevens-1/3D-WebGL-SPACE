@@ -7,7 +7,17 @@ import { Matrix4 } from './matrix'
 import { TrimeshVao } from '././trimesh'
 
 
-export function readBoxen (box_string, shaderProgram, box_size) {
+/**
+ * !! TERRIBLY WRITTEN REWRITE !!
+ * Generates a cube from input string
+ * format is 
+ * 0 0 0   4 4 4   1 0 1"
+ * (pos)   (size)  (color) 
+ * @param {*} box_string 
+ * @param {*} shaderProgram 
+ * @returns 
+ */
+export function readBoxen (box_string, shaderProgram) {
     let box_arr = box_string.split ('\n')
     let box_renders = []
   
@@ -24,16 +34,22 @@ export function readBoxen (box_string, shaderProgram, box_size) {
       let x= Number(c_pos_arr[0]),y= Number(c_pos_arr[1]), z=Number(c_pos_arr[2])
       let height=Number(c_hwd_arr[1]), width=Number(c_hwd_arr[0]), depth=Number(c_hwd_arr[2])
       let cube_attr = generateCube(height, width, depth, x, y, z)
-      console.log (cube_attr)
       const attributes = new VertexAttributes();
       let positions = cube_attr[0]
       let normals = cube_attr[1]
       let faces = cube_attr[2]
+      let box = new TrimeshVao (positions, normals, faces, null);
+      positions = box.flat_positions()
+      normals = box.flat_normals()
+      faces = box.flat_indices()
+      console.log (normals)
+      console.log (faces)
       attributes.addAttribute('position', positions.length / 3, 3, positions);  
       attributes.addAttribute('normal', normals.length/ 3, 3, normals);
       attributes.addIndices(faces);
       let vao = new VertexArray(shaderProgram, attributes)
-      box_renders.push (new TrimeshVao (positions, normals, faces, vao))
+      box.vao = vao
+        box_renders.push (box)
       //box_renders.push (new RenderObject (vao, position, null, "box", c_color))
     }     
     
@@ -62,11 +78,11 @@ export function readBoxen (box_string, shaderProgram, box_size) {
         let heightProp = y / npoints;
         for (let x = 0; x < npoints; x++) {
           let widthProp = x / npoints;
-          positions.push( width  * x + offsetX, 
+          positions.push(new Vector3 (width  * x + offsetX, 
                           height * y + offsetY,
-                          depth  * z + offsetZ)
+                          depth  * z + offsetZ))
         
-          normals.push  (widthProp, heightProp, depthProp)
+          //normals.push  (new Vector3 (widthProp, heightProp, depthProp))
         }
       }
     }
@@ -141,12 +157,17 @@ export function readBoxen (box_string, shaderProgram, box_size) {
       }
     }
   
-    /*const attributes = new VertexAttributes();
-    attributes.addAttribute('position', positions.length / 3, 3, positions);  
-    attributes.addAttribute('normal', normals.length/ 3, 3, normals);
-    attributes.addIndices(faces);*/
-    return [positions, normals, faces];
+    return [positions, normals, arrToVec3 (faces)];
   
+  }
+  
+  function arrToVec3 (array) {
+    let vec3Arr = [];
+    for (let i = 0; i < array.length; i+=3) {
+      vec3Arr.push (new Vector3 (array[i], array[i + 1], array[i + 2]))
+    }
+    console.log (vec3Arr)
+    return vec3Arr;
   }
   
   

@@ -57,10 +57,10 @@ export function generateSkybox() {
   export async function loadCubemap(directoryUrl, extension, textureUnit = gl.TEXTURE0) {
     // the names of the images
 
-    const faces = ['posx', 'negx', 'posy', 'negy', 'posz', 'negz'];
+    //const faces = ['posx', 'negx', 'posy', 'negy', 'posz', 'negz'];
     //const faces = ['bkg1_right', 'bkg1_left', 'bkg1_top', 
     //              'bkg1_bot', 'bkg1_front', 'bkg1_back'];
-    //const faces = ['right', 'left', 'top', 'bot', 'front', 'back']
+    const faces = ['right', 'left', 'top', 'bot', 'front', 'back']
   
     const images = await Promise.all(faces.map(face => {
       const url = `${directoryUrl}/${face}.${extension}`;
@@ -142,8 +142,14 @@ export function generateSkybox() {
       void main() {
         vec3 eyeToPosition = normalize(mixWorldPosition - worldEyePosition);
         vec3 normal = normalize(mixWorldNormal);
+        // ** MIRROR VERSION **
         vec3 reflection = reflect(eyeToPosition, normal);
         fragmentColor = texture(skybox, reflection);
+
+        // ** REFRACTION VERSION **
+        //float ratio = 1.0 / 1.53;
+        //vec3 refraction = refract (eyeToPosition, normal, ratio);
+        //fragmentColor = texture(skybox, refraction);
       }
     `;
     let shaderProgram = new ShaderProgram(vertexSource, fragmentSource)

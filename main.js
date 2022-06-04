@@ -114,6 +114,7 @@ function render() {
   shaderProgram.setUniform1i('normTexture', 0);
 
   // DRAWS OBJECTS
+  /*
   shaderProgram.setUniform3f('albedo', albedo[0], albedo[1], albedo[2])
   shaderProgram.setUniform3f('specularColor', specularColor[0], specularColor[1], specularColor[2])
   shaderProgram.setUniform3f('diffuseColor', diffuseColor[0], diffuseColor[1], diffuseColor[2])
@@ -127,7 +128,7 @@ function render() {
     object.vao.bind()
     object.vao.drawIndexed(gl.TRIANGLES)
     object.vao.unbind()
-  }
+  }*/
 
   // DRAW COLLECTIBLES * AS MIRRORS*
   /*
@@ -147,13 +148,24 @@ function render() {
   }*/
   shaderProgram.unbind()
 
-  //LOOK MORE INTO THIS
  
   shipShader.bind()
   shipShader.setUniformMatrix4('worldFromModel', worldFromModel);
   shipShader.setUniformMatrix4('clipFromEye', clipFromEye);
   shipShader.setUniformMatrix4('eyeFromWorld', camera.eyeFromWorld);
   shipShader.setUniform1i ('skybox', 1)
+  // PLAYER SHIP AS MIRROR
+  for (let i = 0; i < objects.length; i++) {
+    const object = objects[i]
+    const pos = objectPositions[i]
+    // SET AS ATTRIBUTE
+    shipShader.setUniformMatrix4('worldFromModel', pos)
+    object.vao.bind()
+    object.vao.drawIndexed(gl.TRIANGLES)
+    object.vao.unbind()
+  }
+
+  // OTHER SHIPS AS MIRROR
   for (let i = 0; i < collectibles.length; i++) {
 
     shipShader.setUniformMatrix4('worldFromModel', collectiblePositions[i]);
@@ -259,7 +271,7 @@ async function initialize() {
   let skyboxAttributes = generateSkybox()
   skyboxVao = new VertexArray (skyboxShaderProgram, skyboxAttributes)
   // load in skybox cube
-  await loadCubemap ("./bkg/sky", "png", gl.TEXTURE1)
+  await loadCubemap ("./bkg/lightblue", "png", gl.TEXTURE1)
   
 
   const vertexSource = `
@@ -365,16 +377,18 @@ void main() {
 async function initializeObjects() {
 
   // GENERATE PLAYER OBJECT
-  let ship = readBoxen ("0 0 0   4 4 4   1 0 1", shaderProgram)[0]
+  shipShader = ship_shader();
+
+  let ship = readBoxen ("0 0 0   4 4 4   1 0 1", shipShader)[0]
   objects.push         (ship)
-  let ship_offset_x = 10
-  let ship_offset_y = 10
-  let ship_offset_z = 10
+  let ship_offset = new Vector3(10,10,7)
+  
+  ship_offset.add (ship.centroid)
+  // add offset + (centroid - position)
   // SHIPS OFFSET CALCULATION
   let ship_position = camera.position
-                      .add (camera.forward.scalarMultiply(ship_offset_x)
-                      .add (camera.right.scalarMultiply (ship_offset_y))
-                      .add (camera.worldup.scalarMultiply(ship_offset_z)))
+                      .add (camera.forward.scalarMultiply(ship_offset.x)
+                      .add (camera.right.scalarMultiply (ship_offset.z)))
   objectPositions.push( Matrix4.translate (ship_position.x, 
                                           ship_position.y, 
                                           ship_position.z))
@@ -460,19 +474,21 @@ function rotateCollectibles() {
     let pos = collectiblePositions[i]
     const centroid = collectible.centroid
     const center = new Vector3(centroid.x, 1, centroid.z)
-    //pos = pos.multiplyMatrix(Matrix4.rotateAroundAxis(center, degrees))
-    //collectiblePositions[i] = pos
+    pos = pos.multiplyMatrix(Matrix4.rotateAroundAxis(center, degrees))
+    collectiblePositions[i] = pos
   }
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
-  let ship_offset_z = 5
+  let ship_offset_z = 3.6
+  let center = objects[0].centroid
   // ships position
   let ship_position = camera.position
                       .add (camera.forward.scalarMultiply(ship_offset_x)
                       .add (camera.right.scalarMultiply (ship_offset_z)))
-  objectPositions[0] = Matrix4.translate (ship_position.x, 
-                                          ship_position.y, 
+  
+  objectPositions[0] = Matrix4.translate (ship_position.x, ship_position.y, 
                                           ship_position.z)
+  
   camera.timeStepMove()
   render()
   requestAnimationFrame(rotateCollectibles)
