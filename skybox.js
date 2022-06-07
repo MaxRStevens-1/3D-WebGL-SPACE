@@ -64,7 +64,6 @@ export function generateSkybox() {
   
     const images = await Promise.all(faces.map(face => {
       const url = `${directoryUrl}/${face}.${extension}`;
-      console.log (url)
       return readImage(url);
     }));
   

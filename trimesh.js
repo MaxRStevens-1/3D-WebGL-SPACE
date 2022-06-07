@@ -6,6 +6,7 @@ export class Trimesh {
     this.normals = normals
     this.indices = indices
     this.textures = textures
+    this.position_point = null;
     // set default values of min n max
     // very large constant
     this.min = new Vector3 (1000000,1000000,100000)

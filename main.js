@@ -10,6 +10,7 @@ import { Camera, SlideCamera } from './camera'
 import { reserveDepthTexture, initializeDepthFbo, initializeDepthProgram, createTexture2d} from './shadow'
 import {readBoxen, generateCube} from './box_gen'
 import { generateSkybox, loadCubemap, skybox_shader_program, ship_shader} from './skybox'
+import { Trackball } from './trackball'
 
 
 let canvas
@@ -72,7 +73,6 @@ function render() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
   // DRAW SKYBOX
-  
   skyboxShaderProgram.bind()
   gl.depthMask(false);
   const worldFromModel = Matrix4.translate(camera.position.x, camera.position.y, camera.position.z);
@@ -85,9 +85,6 @@ function render() {
   skyboxVao.unbind()
   skyboxShaderProgram.unbind()
   gl.depthMask(true);
-
-  // SHIP AS A MIRROR DRAW
-
 
   shaderProgram.bind()
   // Bling-Fong uniforms init
@@ -148,7 +145,7 @@ function render() {
   }*/
   shaderProgram.unbind()
 
- 
+  // SHIPS AS MIRRORS
   shipShader.bind()
   shipShader.setUniformMatrix4('worldFromModel', worldFromModel);
   shipShader.setUniformMatrix4('clipFromEye', clipFromEye);
@@ -174,10 +171,6 @@ function render() {
     collectibles[i].vao.unbind()
   }
   shipShader.unbind()
-  
-
-
-
 }
 
 // Shadow/Depths render function
@@ -189,7 +182,6 @@ function renderDepths(width, height, fbo) {
 
   const clipFromWorld = clipFromLight.multiplyMatrix(lightFromWorld);
   depthProgram.bind();
-/*
   for (let i = 0; i < collectibles.length; i++) {
     const collectible = collectibles[i]
     const pos = collectiblePositions[i]
@@ -198,7 +190,7 @@ function renderDepths(width, height, fbo) {
     collectible.vao.bind()
     collectible.vao.drawIndexed(gl.TRIANGLES)
     collectible.vao.unbind()
-  }*/
+  }
 
   for (let i = 0; i < objects.length; i++) {
     const object = objects[i]
@@ -214,6 +206,7 @@ function renderDepths(width, height, fbo) {
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
+
 /**
  * updates viewport to new window
  */
@@ -249,6 +242,7 @@ async function initialize() {
   window.gl = canvas.getContext('webgl2')
 
   gl.enable(gl.DEPTH_TEST)
+  attributes = new VertexAttributes()
 
   // SHADOW INIT
   depthTextureUnit = reserveDepthTexture (textDim, textDim, gl.TEXTURE0)
@@ -256,8 +250,6 @@ async function initialize() {
   depthProgram = initializeDepthProgram()
   getTextFromWorld()
 
-
-  attributes = new VertexAttributes()
 
   // PLAYER CAMERA
   const from = new Vector3(100, 100, 100)
@@ -378,17 +370,16 @@ async function initializeObjects() {
 
   // GENERATE PLAYER OBJECT
   shipShader = ship_shader();
-
   let ship = readBoxen ("0 0 0   4 4 4   1 0 1", shipShader)[0]
-  objects.push         (ship)
+  objects.push (ship)
+
+    // SHIPS OFFSET CALCULATION
   let ship_offset = new Vector3(10,10,7)
-  
   ship_offset.add (ship.centroid)
-  // add offset + (centroid - position)
-  // SHIPS OFFSET CALCULATION
   let ship_position = camera.position
                       .add (camera.forward.scalarMultiply(ship_offset.x)
                       .add (camera.right.scalarMultiply (ship_offset.z)))
+  ship.position_point = ship_position;
   objectPositions.push( Matrix4.translate (ship_position.x, 
                                           ship_position.y, 
                                           ship_position.z))
@@ -401,7 +392,6 @@ async function initCollectibles() {
   let lines = await readObjFromFile(name);
   // ship to mirror shader
   shipShader = ship_shader();
-  // **
 
   for (let i = 0; i < 5; i++) {
     // create trimesh vao object
@@ -411,10 +401,13 @@ async function initCollectibles() {
     collectibles.push(collectible)
     // create positions for collectible
     const center =  new Vector3 (collectible.centroid.x, collectible.centroid.y, collectible.centroid.z)
-
     let x = Math.random() * 1000
     let z = Math.random() * 1000
-    let pos = Matrix4.translate(x, center.y, z)
+    let y = Math.random() * 200
+    let position_point = new Vector3 (x, y, z)
+
+    collectible.position_point = position_point
+    let pos = Matrix4.translate(x, y, z)
     pos = pos.multiplyMatrix(Matrix4.scale(40, 40, 40))
     collectiblePositions.push(pos)
   }
@@ -428,7 +421,6 @@ async function initCollectibles() {
  */
 function createShipMirrorObject (lines, ship_shader) {
   let obj_trimesh = Trimesh.readObjToJson(lines)
-
   let obj_attributes = new VertexAttributes()
   let positions = obj_trimesh.flat_positions()
   let normals = obj_trimesh.flat_normals()
@@ -451,7 +443,6 @@ function createShipMirrorObject (lines, ship_shader) {
  */
 function createObject(lines) {
   let obj_trimesh = Trimesh.readObjToJson(lines)
-
   let obj_attributes = new VertexAttributes()
   let positions = obj_trimesh.flat_positions()
   let normals = obj_trimesh.flat_normals()
@@ -474,24 +465,52 @@ function rotateCollectibles() {
     let pos = collectiblePositions[i]
     const centroid = collectible.centroid
     const center = new Vector3(centroid.x, 1, centroid.z)
-    pos = pos.multiplyMatrix(Matrix4.rotateAroundAxis(center, degrees))
+    pos = pos.multiplyMatrix(Matrix4.rotateX (degrees * Math.random()))//Matrix4.rotateAroundAxis(center, degrees * Math.random()))
+          .multiplyMatrix (Matrix4.rotateZ (degrees * Math.random()))
     collectiblePositions[i] = pos
   }
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
   let ship_offset_z = 3.6
   let center = objects[0].centroid
+  let ship = objects[0]
   // ships position
   let ship_position = camera.position
                       .add (camera.forward.scalarMultiply(ship_offset_x)
                       .add (camera.right.scalarMultiply (ship_offset_z)))
   
+  ship.position_point = ship_position;
   objectPositions[0] = Matrix4.translate (ship_position.x, ship_position.y, 
                                           ship_position.z)
-  
-  camera.timeStepMove()
+  if (checkCollision (ship)) {
+    camera.end_point = camera.position
+  }
+  else
+    camera.timeStepMove()
   render()
   requestAnimationFrame(rotateCollectibles)
+}
+
+
+function checkCollision (object) {
+  let player_pos = object.position_point
+  for (let i = 0; i < collectibles.length; i++) {
+    let c_obj = collectibles[i]
+    let c_pos = c_obj.position_point
+    if (c_obj == null || c_pos == null) {
+      console.log ("Bad obj in collision check")
+      continue
+    }
+    
+    let min = collectiblePositions[i].multiplyVector (c_obj.min)
+    let max = collectiblePositions[i].multiplyVector (c_obj.max)
+    if (player_pos.x >= min.x && player_pos.x <= max.x &&
+        player_pos.y >= min.y && player_pos.y <= max.y &&
+        player_pos.z >= min.z && player_pos.z <= max.z) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function onKeyDown(event) {
@@ -517,6 +536,8 @@ function onKeyDown(event) {
   } if (event.key ==  '-' || keysPressed.down) {
     camera.adjustVelocityElevate (-moveDelta)
     keysPressed.down = true
+  } if (event.key == 't') {
+    doTrackball = true
   }
   render()
 }
