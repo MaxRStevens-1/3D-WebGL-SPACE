@@ -42,15 +42,12 @@ export function readBoxen (box_string, shaderProgram) {
       positions = box.flat_positions()
       normals = box.flat_normals()
       faces = box.flat_indices()
-      console.log (normals)
-      console.log (faces)
       attributes.addAttribute('position', positions.length / 3, 3, positions);  
       attributes.addAttribute('normal', normals.length/ 3, 3, normals);
       attributes.addIndices(faces);
       let vao = new VertexArray(shaderProgram, attributes)
       box.vao = vao
-        box_renders.push (box)
-      //box_renders.push (new RenderObject (vao, position, null, "box", c_color))
+      box_renders.push (box)
     }     
     
     return box_renders
@@ -166,7 +163,6 @@ export function readBoxen (box_string, shaderProgram) {
     for (let i = 0; i < array.length; i+=3) {
       vec3Arr.push (new Vector3 (array[i], array[i + 1], array[i + 2]))
     }
-    console.log (vec3Arr)
     return vec3Arr;
   }
   

@@ -11,7 +11,7 @@ import { reserveDepthTexture, initializeDepthFbo, initializeDepthProgram, create
 import {readBoxen, generateCube} from './box_gen'
 import { generateSkybox, loadCubemap, skybox_shader_program, ship_shader} from './skybox'
 import { Trackball } from './trackball'
-
+import { generateSphere } from './sphere.js'
 
 let canvas
 let attributes
@@ -127,8 +127,7 @@ function render() {
     object.vao.unbind()
   }*/
 
-  // DRAW COLLECTIBLES * AS MIRRORS*
-  /*
+  
   shaderProgram.setUniform3f('albedo', .9, .5, .3)
   shaderProgram.setUniform3f('specularColor', .8, .9, .1)
   shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
@@ -142,7 +141,7 @@ function render() {
     collectible.vao.bind()
     collectible.vao.drawIndexed(gl.TRIANGLES)
     collectible.vao.unbind()
-  }*/
+  }
   shaderProgram.unbind()
 
   // SHIPS AS MIRRORS
@@ -163,13 +162,14 @@ function render() {
   }
 
   // OTHER SHIPS AS MIRROR
+  /*
   for (let i = 0; i < collectibles.length; i++) {
 
     shipShader.setUniformMatrix4('worldFromModel', collectiblePositions[i]);
     collectibles[i].vao.bind()
     collectibles[i].vao.drawIndexed (gl.TRIANGLES)
     collectibles[i].vao.unbind()
-  }
+  } */
   shipShader.unbind()
 }
 
@@ -390,14 +390,13 @@ async function initCollectibles() {
   const name = './spaceship.obj';
 
   let lines = await readObjFromFile(name);
-  // ship to mirror shader
   shipShader = ship_shader();
 
   for (let i = 0; i < 5; i++) {
     // create trimesh vao object
     //const collectible = createObject(lines)
     // SHIP 2 MIRROR
-    const collectible = createShipMirrorObject (lines, shipShader)
+    const collectible = createShipMirrorObject (lines, shaderProgram)
     collectibles.push(collectible)
     // create positions for collectible
     const center =  new Vector3 (collectible.centroid.x, collectible.centroid.y, collectible.centroid.z)
@@ -411,6 +410,33 @@ async function initCollectibles() {
     pos = pos.multiplyMatrix(Matrix4.scale(40, 40, 40))
     collectiblePositions.push(pos)
   }
+  // GENERATE SPHERE
+  let sphere_attributes_arr = generateSphere (20, 20, 20)
+  let sPos = sphere_attributes_arr[0]
+  let sNor = sphere_attributes_arr[1]
+  let sInd = sphere_attributes_arr[2]
+  let sTex = sphere_attributes_arr[3]
+  let sphere_trivao = new TrimeshVao (sPos, sNor, sInd, null, sTex)
+  sPos = sphere_trivao.flat_positions ()
+  sNor = sphere_trivao.flat_normals ()
+  // SPHERE ATTRIBUTES
+  const sphere_attributes = new VertexAttributes()
+  sphere_attributes.addAttribute ('position', sPos.length / 3, 3, sPos)
+  sphere_attributes.addAttribute ('normal', sPos.length / 3, 3, sNor)
+  sphere_attributes.addAttribute ('texPosition', sPos.length / 3, 2, sTex)
+  sphere_attributes.addIndices (sInd)
+  let sphere_vao = new VertexArray (shaderProgram, sphere_attributes)
+  sphere_trivao.vao = sphere_vao
+  // SPHERE POSITION
+  collectibles.push (sphere_trivao)
+  let x = Math.random() * 2000
+  let z = Math.random() * 2000
+  let y = Math.random() * 200
+  let position_point = new Vector3 (x, y, z)
+  sphere_trivao.position_point = position_point
+  let sphere_pos = Matrix4.translate (x, y, z)
+  sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (10,10,10))
+  collectiblePositions.push (sphere_pos)
 }
 
 /**
@@ -465,8 +491,7 @@ function rotateCollectibles() {
     let pos = collectiblePositions[i]
     const centroid = collectible.centroid
     const center = new Vector3(centroid.x, 1, centroid.z)
-    pos = pos.multiplyMatrix(Matrix4.rotateX (degrees * Math.random()))//Matrix4.rotateAroundAxis(center, degrees * Math.random()))
-          .multiplyMatrix (Matrix4.rotateZ (degrees * Math.random()))
+    pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, degrees * Math.random()))
     collectiblePositions[i] = pos
   }
   // OFFSETS ON SCREEN

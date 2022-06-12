@@ -1,5 +1,6 @@
 import { Vector3 } from './vector'
 
+// REQURES VEC3s INTERANLLY TO FUNCTION
 export class Trimesh {
   constructor(positions, normals, indices, textures) {
     this.positions = positions
