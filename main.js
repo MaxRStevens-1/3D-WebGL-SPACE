@@ -29,6 +29,9 @@ let skyboxVao
 // MIRROR SURFACE SHADER
 let shipShader
 
+// SPHERE
+let sphere_index = 5
+
 // SHADOW
 let depthTextureUnit
 let textureFromWorld
@@ -486,6 +489,25 @@ function createObject(lines) {
 
 // REWRITE AND RENAME
 function rotateCollectibles() {
+  // CHECK GRAVITY
+  let ship = objects[0]
+  let ship_distance = checkSphereDistance (ship);
+  if (ship_distance <= 2000 && ship_distance >= 100)  {
+    // calculate force of gravity
+    let force = forceOfGravity (ship_distance, 100000)
+    let force_vector = new Vector3(force, force, force)
+    // calculate unit vector between pointing from sphere to ship
+    // B - A / | B - A |
+    let sphere = collectibles[sphere_index]
+    let gravity_direction = sphere.position_point.add(ship.position_point.inverse())
+                            .normalize().scalarMultiply(force)
+    camera.position = camera.position.add (gravity_direction)
+    console.log ("pos="+camera.position)
+    console.log ("distance="+ship_distance)
+  }
+
+
+
   for (let i = 0; i < collectibles.length; i++) {
     const collectible = collectibles[i]
     let pos = collectiblePositions[i]
@@ -497,8 +519,6 @@ function rotateCollectibles() {
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
   let ship_offset_z = 3.6
-  let center = objects[0].centroid
-  let ship = objects[0]
   // ships position
   let ship_position = camera.position
                       .add (camera.forward.scalarMultiply(ship_offset_x)
@@ -516,6 +536,32 @@ function rotateCollectibles() {
   requestAnimationFrame(rotateCollectibles)
 }
 
+
+/**
+ * checks for distance between points in 3d space
+ * @param {} object 
+ * @returns 
+ */
+function checkSphereDistance (object) {
+  let sphere = collectibles[sphere_index]
+  let s_point = sphere.position_point
+  let o_point = object.position_point
+  let distance = Math.sqrt (Math.pow(s_point.x - o_point.x, 2) 
+                            + Math.pow(s_point.y - o_point.y, 2) 
+                            + Math.pow(s_point.z - o_point.z, 2)) 
+  return distance
+}
+
+/**
+ * Guesstimate of gravitational force
+ * @param {} distance 
+ * @param {*} mass_impact 
+ * @returns 
+ */
+function forceOfGravity (distance, mass_impact) {
+  let force = 1/Math.pow(distance,2) * mass_impact
+  return force
+} 
 
 function checkCollision (object) {
   let player_pos = object.position_point
