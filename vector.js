@@ -17,6 +17,9 @@ export class Vector4 {
   get z() {
     return this.coordinates[2]
   }
+  get xyz () {
+    return new Vector3 (this.coordinates[0], this.coordinates[1], this.coordinates[2])
+  }
   get magnitude_vec3() {
     return Math.sqrt(
       this.coordinates[0] * this.coordinates[0] +
@@ -63,6 +66,15 @@ export class Vector3 {
   }
   toString() {
     return `[${this.coordinates[0]}, ${this.coordinates[1]}, ${this.coordinates[2]}]`
+  }
+  // morphs vec3 to vec4 with homo cord
+  toVec4 () {
+    let result = new Vector4()
+    result.set (0, this.coordinates[0])
+    result.set (1, this.coordinates[1])
+    result.set (2, this.coordinates[2])
+    result.set (3, 1)
+    return result
   }
   inverse() {
     return new Vector3(

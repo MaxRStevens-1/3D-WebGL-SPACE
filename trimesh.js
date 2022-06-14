@@ -2,6 +2,13 @@ import { Vector3 } from './vector'
 
 // REQURES VEC3s INTERANLLY TO FUNCTION
 export class Trimesh {
+  /**
+   * Takes in Vector3s for position, normals, and indicies
+   * @param {*} positions 
+   * @param {*} normals 
+   * @param {*} indices 
+   * @param {*} textures 
+   */
   constructor(positions, normals, indices, textures) {
     this.positions = positions
     this.normals = normals
@@ -10,13 +17,13 @@ export class Trimesh {
     this.position_point = null;
     // set default values of min n max
     // very large constant
-    this.min = new Vector3 (1000000,1000000,100000)
+    this.min = new Vector3 (1000000,1000000, 100000)
     this.max = new Vector3 (-1000000, -10000000, -1000000)
     this.createBoundingBox()
     //this.depth = 0
     this.centroid = new Vector3 ((this.min.x + this.max.x) / 2,
       (this.min.y + this.max.y) / 2, (this.min.z + this.max.z) / 2)
-    if (normals.length == 0)
+    if (normals.length == 0 || normals == null)
       this.generateNormals()
   }
 

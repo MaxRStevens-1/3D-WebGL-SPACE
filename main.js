@@ -45,6 +45,7 @@ let lightCamera;
 let lightFromWorld;
 let clipFromLight;
 
+// BLING-FONG
 const albedo = [.6, .6, .6]
 const specularColor = [.3, .8, .9];
 const diffuseColor = [.1, .6, .9];
@@ -59,6 +60,10 @@ let degrees = 1;
 const objects = []
 const objectPositions = []
 
+// HITBOXES
+const bounding_boxes = []
+const bounding_boxes_positions = []
+let show_hitboxes = true
 // KEYPRESSES
 let keysPressed = {
   a: false,
@@ -88,9 +93,9 @@ function render() {
   skyboxVao.unbind()
   skyboxShaderProgram.unbind()
   gl.depthMask(true);
-
   shaderProgram.bind()
-  // Bling-Fong uniforms init
+
+  // Bling-Fong basic init
   shaderProgram.setUniform3f('albedo', albedo[0], albedo[1], albedo[2])
   shaderProgram.setUniform3f('specularColor', specularColor[0], specularColor[1], specularColor[2])
   shaderProgram.setUniform3f('diffuseColor', diffuseColor[0], diffuseColor[1], diffuseColor[2])
@@ -134,7 +139,7 @@ function render() {
   shaderProgram.setUniform3f('albedo', .9, .5, .3)
   shaderProgram.setUniform3f('specularColor', .8, .9, .1)
   shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-  shaderProgram.setUniform1f('shininess', 90)
+  shaderProgram.setUniform1f('shininess', 80)
   shaderProgram.setUniform1f('ambientFactor', .4)
   for (let i = 0; i < collectibles.length; i++) {
     const collectible = collectibles[i]
@@ -145,7 +150,31 @@ function render() {
     collectible.vao.drawIndexed(gl.TRIANGLES)
     collectible.vao.unbind()
   }
+  // DRAW HITBOXES IF OPTION SELECTED
+  if (show_hitboxes)
+  {
+    gl.depthMask(false);
+    shaderProgram.setUniform3f('albedo', .7, .7, .5)
+    shaderProgram.setUniform3f('specularColor', .2, .4, .3)
+    shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
+    shaderProgram.setUniform1f('shininess', 40)
+    shaderProgram.setUniform1f('ambientFactor', .6)
+    for (let i = 0; i < bounding_boxes.length; i++) {
+      const bounding_box = bounding_boxes[i]
+      const pos = bounding_boxes_positions[i]
+      // SET AS ATTRIBUTE
+      shaderProgram.setUniformMatrix4('worldFromModel', pos)
+      bounding_box.vao.bind()
+      bounding_box.vao.drawIndexed(gl.TRIANGLES)
+      bounding_box.vao.unbind()
+    }
+    //console.log ("working, size=" +bounding_boxes.length)
+    gl.depthMask(true);
+  }
+
+
   shaderProgram.unbind()
+
 
   // SHIPS AS MIRRORS
   shipShader.bind()
@@ -239,7 +268,9 @@ async function readObjFromFile (file) {
   return obj
 }
 
-
+/**
+ * Init everything needed to run program
+ */
 async function initialize() {
   canvas = document.getElementById('canvas')
   window.gl = canvas.getContext('webgl2')
@@ -369,6 +400,9 @@ void main() {
 
 }
 
+/**
+ * Initalize player object
+ */
 async function initializeObjects() {
 
   // GENERATE PLAYER OBJECT
@@ -388,6 +422,9 @@ async function initializeObjects() {
                                           ship_position.z))
 }
 
+/**
+ * Initalize non- player objects
+ */
 async function initCollectibles() {
   // credit to ezgi bakim
   const name = './spaceship.obj';
@@ -436,11 +473,60 @@ async function initCollectibles() {
   let z = Math.random() * 2000
   let y = Math.random() * 200
   let position_point = new Vector3 (x, y, z)
-  sphere_trivao.position_point = position_point
+  sphere_trivao.position_point = position_point.add (sphere_trivao.centroid)
   let sphere_pos = Matrix4.translate (x, y, z)
   sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (10,10,10))
   collectiblePositions.push (sphere_pos)
+  generateVisualHitBoxes ()
 }
+
+/**
+ * Generates visual representations of hitboxes around interactable objects
+ */
+function generateVisualHitBoxes () {
+  for (let i = 0; i < collectibles.length; i++) {
+    let c_obj = collectibles[i]
+    let c_pos = c_obj.position_point
+    if (c_obj == null || c_pos == null) {
+      console.log ("Bad obj in collision check")
+      continue
+    }
+    
+    let min = c_obj.min//collectiblePositions[i].multiplyVector (c_obj.min)
+    let max = c_obj.max//collectiblePositions[i].multiplyVector (c_obj.max)
+    
+    let height = Math.abs (max.y) + Math.abs(min.y)
+    let width = Math.abs (max.x) + Math.abs(min.x)
+    let depth = Math.abs (max.z) + Math.abs(min.z)
+    //  GENERATE HIT CUBE
+    let cube_attrs = generateCube (height, width, depth, min.x, min.y, min.z)
+    let cube_pos = cube_attrs[0]
+    let cube_norm = cube_attrs[1]
+    let cube_faces = cube_attrs[2]
+    // GENERATE CUBE TRIMESH VAO 
+    let cube_trivao = new TrimeshVao (cube_pos, cube_norm, cube_faces, null)
+    cube_pos   = cube_trivao.flat_positions ()
+    cube_norm  = cube_trivao.flat_normals   ()
+    cube_faces = cube_trivao.flat_indices   ()
+    let cube_attributes = new VertexAttributes ()
+    cube_attributes.addAttribute ('position', cube_pos.length / 3, 3, cube_pos)
+    cube_attributes.addAttribute ('normal', cube_pos.length / 3, 3, cube_norm)
+    cube_attributes.addIndices (cube_faces)
+    let cube_vao = new VertexArray (shaderProgram, cube_attributes)
+    cube_trivao.vao = cube_vao
+    cube_trivao.position_point = c_pos
+    // ADD TO BOUNDING BOX ARRAYS
+    bounding_boxes.push (cube_trivao)
+    console.log ("cube_max="+cube_trivao.max)
+    console.log ("obj_max="+c_obj.max)
+    console.log ("cube_min="+cube_trivao.min)
+    console.log ("obj_min="+c_obj.min)
+    console.log ("_____________________________")
+    bounding_boxes_positions.push (collectiblePositions[i])
+  }
+  console.log ("CUBES GENERATED")
+}
+
 
 /**
  * Creates and return an trimeshVao from inputed shader
@@ -493,28 +579,32 @@ function rotateCollectibles() {
   let ship = objects[0]
   let ship_distance = checkSphereDistance (ship);
   if (ship_distance <= 2000 && ship_distance >= 100)  {
+    // MOVE PLAYER WITH FORCE OF GRAVITY
+
     // calculate force of gravity
     let force = forceOfGravity (ship_distance, 100000)
     let force_vector = new Vector3(force, force, force)
-    // calculate unit vector between pointing from sphere to ship
+    // calculate unit vector between pointing from ship to sphere
     // B - A / | B - A |
     let sphere = collectibles[sphere_index]
     let gravity_direction = sphere.position_point.add(ship.position_point.inverse())
                             .normalize().scalarMultiply(force)
-    camera.position = camera.position.add (gravity_direction)
+    camera.end_point = camera.end_point.add (gravity_direction)
     console.log ("pos="+camera.position)
     console.log ("distance="+ship_distance)
   }
 
 
-
+  // ROTATE OBJECTS
   for (let i = 0; i < collectibles.length; i++) {
     const collectible = collectibles[i]
     let pos = collectiblePositions[i]
     const centroid = collectible.centroid
     const center = new Vector3(centroid.x, 1, centroid.z)
-    pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, degrees * Math.random()))
-    collectiblePositions[i] = pos
+    //pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, degrees * Math.random()))
+    //collectiblePositions[i] = pos
+    if (show_hitboxes)
+      bounding_boxes_positions[i] = pos
   }
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
@@ -563,27 +653,38 @@ function forceOfGravity (distance, mass_impact) {
   return force
 } 
 
+/**
+ * Checks if an inputed object is within bounding box of any iterable object
+ * @param {*} object 
+ * @returns 
+ */
 function checkCollision (object) {
-  let player_pos = object.position_point
-  for (let i = 0; i < collectibles.length; i++) {
+  for (let i = 0; i < collectibles.length - 1; i++) {
     let c_obj = collectibles[i]
     let c_pos = c_obj.position_point
     if (c_obj == null || c_pos == null) {
       console.log ("Bad obj in collision check")
       continue
     }
-    
-    let min = collectiblePositions[i].multiplyVector (c_obj.min)
-    let max = collectiblePositions[i].multiplyVector (c_obj.max)
-    if (player_pos.x >= min.x && player_pos.x <= max.x &&
-        player_pos.y >= min.y && player_pos.y <= max.y &&
-        player_pos.z >= min.z && player_pos.z <= max.z) {
+    let c_min = collectiblePositions[i].multiplyVector (c_obj.min)
+    let c_max = collectiblePositions[i].multiplyVector (c_obj.max)
+    let p_max = objectPositions[0].multiplyVector (object.max)
+    let p_min = objectPositions[0].multiplyVector (object.min)
+
+
+    if  ((p_min.x <= c_max.x && p_max.x >= c_min.x)
+      && (p_min.y <= c_max.y && p_max.y >= c_min.y) 
+      && (p_min.z <= c_max.z && p_max.z >= c_min.z))
       return true;
-    }
   }
   return false;
 }
 
+/**
+ * Handles player inputs when a key is pressed down
+ * 
+ * @param {*} event 
+ */
 function onKeyDown(event) {
   if (event.key === 'ArrowUp' || event.key == 'w' || keysPressed.w) {
     camera.adjustVelocityAdvance(moveDelta)
@@ -607,10 +708,9 @@ function onKeyDown(event) {
   } if (event.key ==  '-' || keysPressed.down) {
     camera.adjustVelocityElevate (-moveDelta)
     keysPressed.down = true
-  } if (event.key == 't') {
-    doTrackball = true
-  }
-  render()
+  } if (event.key == 'h')
+    show_hitboxes = !show_hitboxes
+  //render()
 }
 function onKeyUp (event) {
   if (event.key === 'ArrowUp' || event.key == 'w') {
