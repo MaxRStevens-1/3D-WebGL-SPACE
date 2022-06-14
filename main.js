@@ -169,7 +169,6 @@ function render() {
       bounding_box.vao.drawIndexed(gl.TRIANGLES)
       bounding_box.vao.unbind()
     }
-    //console.log ("working, size=" +bounding_boxes.length)
     gl.depthMask(true);
   }
 
@@ -518,14 +517,8 @@ function generateVisualHitBoxes () {
     cube_trivao.position_point = c_pos
     // ADD TO BOUNDING BOX ARRAYS
     bounding_boxes.push (cube_trivao)
-    console.log ("cube_max="+cube_trivao.max)
-    console.log ("obj_max="+c_obj.max)
-    console.log ("cube_min="+cube_trivao.min)
-    console.log ("obj_min="+c_obj.min)
-    console.log ("_____________________________")
     bounding_boxes_positions.push (collectiblePositions[i])
   }
-  console.log ("CUBES GENERATED")
 }
 
 
@@ -591,8 +584,6 @@ function rotateCollectibles() {
     let gravity_direction = sphere.position_point.add(ship.position_point.inverse())
                             .normalize().scalarMultiply(force)
     camera.end_point = camera.end_point.add (gravity_direction)
-    console.log ("pos="+camera.position)
-    console.log ("distance="+ship_distance)
   }
 
 
@@ -602,8 +593,8 @@ function rotateCollectibles() {
     let pos = collectiblePositions[i]
     const centroid = collectible.centroid
     const center = new Vector3(centroid.x, 1, centroid.z)
-    //pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, degrees * Math.random()))
-    //collectiblePositions[i] = pos
+    pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, degrees * Math.random()))
+    collectiblePositions[i] = pos
     if (show_hitboxes)
       bounding_boxes_positions[i] = pos
   }
