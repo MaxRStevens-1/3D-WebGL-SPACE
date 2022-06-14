@@ -60,10 +60,11 @@ let degrees = 1;
 const objects = []
 const objectPositions = []
 
-// HITBOXES
+// BOUNDINGBOXES
 const bounding_boxes = []
 const bounding_boxes_positions = []
-let show_hitboxes = true
+let show_hitboxes = false
+
 // KEYPRESSES
 let keysPressed = {
   a: false,

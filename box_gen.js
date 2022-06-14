@@ -62,7 +62,7 @@ export function readBoxen (box_string, shaderProgram) {
    * @param {*} offsetX 
    * @param {*} offsetY 
    * @param {*} offsetZ 
-   * @returns an array with [positions, normals, faces]
+   * @returns an array of vec3s with [positions, [], faces]
    */
   export function generateCube(height, width, depth, offsetX, offsetY, offsetZ) {
     let positions = [];
