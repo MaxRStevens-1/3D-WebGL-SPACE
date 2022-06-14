@@ -147,10 +147,14 @@ function render() {
     const pos = collectiblePositions[i]
     // SET AS ATTRIBUTE
     shaderProgram.setUniformMatrix4('worldFromModel', pos)
+    // sphere index
+    if (i == sphere_index)
+      shaderProgram.setUniform1i('normTexture', 2);
     collectible.vao.bind()
     collectible.vao.drawIndexed(gl.TRIANGLES)
     collectible.vao.unbind()
   }
+  shaderProgram.setUniform1f ('normTexture', 2)
   // DRAW HITBOXES IF OPTION SELECTED
   if (show_hitboxes)
   {
@@ -298,7 +302,9 @@ async function initialize() {
   skyboxVao = new VertexArray (skyboxShaderProgram, skyboxAttributes)
   // load in skybox cube
   await loadCubemap ("./bkg/lightblue", "png", gl.TEXTURE1)
-  
+  const moonImage = await readImage('./moon.png')
+  createTexture2d (moonImage, gl.TEXTURE2)
+
 
   const vertexSource = `
 uniform mat4 clipFromEye;
@@ -308,7 +314,7 @@ uniform mat4 textureFromWorld;
 
 in vec3 normal;
 in vec3 position;
-in vec2 flat_texPosition;
+in vec2 texPosition;
 
 out vec3 mixNormal;
 out vec3 mixPosition;
@@ -321,7 +327,7 @@ void main() {
   mixNormal = (eyeFromWorld * worldFromModel * vec4(normal.x, -normal.y, normal.z, 0)).xyz;
   mixPosition =  (eyeFromWorld * worldFromModel * vec4(position, 1.0)).xyz;
   mixTexPosition = textureFromWorld * worldFromModel * vec4(position, 1.0);
-  flat_mixTexPosition = flat_texPosition;
+  flat_mixTexPosition = texPosition;
 }
   `;
 
@@ -461,6 +467,8 @@ async function initCollectibles() {
   sNor = sphere_trivao.flat_normals ()
   // SPHERE ATTRIBUTES
   const sphere_attributes = new VertexAttributes()
+  console.log ("textures legnth = " + sTex.length / 2)
+  console.log ("put length=" + sPos.length / 3)
   sphere_attributes.addAttribute ('position', sPos.length / 3, 3, sPos)
   sphere_attributes.addAttribute ('normal', sPos.length / 3, 3, sNor)
   sphere_attributes.addAttribute ('texPosition', sPos.length / 3, 2, sTex)
