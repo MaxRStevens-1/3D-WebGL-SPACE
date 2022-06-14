@@ -443,18 +443,30 @@ async function initCollectibles() {
     //const collectible = createObject(lines)
     // SHIP 2 MIRROR
     const collectible = createShipMirrorObject (lines, shaderProgram)
-    collectibles.push(collectible)
     // create positions for collectible
     const center =  new Vector3 (collectible.centroid.x, collectible.centroid.y, collectible.centroid.z)
-    let x = Math.random() * 1000
-    let z = Math.random() * 1000
-    let y = Math.random() * 200
+    let x = Math.random() * 1500
+    let z = Math.random() * 1500
+    let y = Math.random() * 1500
     let position_point = new Vector3 (x, y, z)
 
     collectible.position_point = position_point
     let pos = Matrix4.translate(x, y, z)
     pos = pos.multiplyMatrix(Matrix4.scale(40, 40, 40))
+    // FIND POSITION THAT DOES NOT LIE WITHIN OTHER OBJ
+    while (checkObjectToObjectCollision (collectible, pos) && i != 0) {
+      x = Math.random() * 1500
+      z = Math.random() * 1500
+      y = Math.random() * 1500
+      position_point = new Vector3 (x, y, z)
+  
+      collectible.position_point = position_point
+      pos = Matrix4.translate(x, y, z)
+      pos = pos.multiplyMatrix(Matrix4.scale(40, 40, 40))
+    }
     collectiblePositions.push(pos)
+    collectibles.push(collectible)
+
   }
   // GENERATE SPHERE
   let sphere_attributes_arr = generateSphere (20, 20, 20)
@@ -476,7 +488,6 @@ async function initCollectibles() {
   let sphere_vao = new VertexArray (shaderProgram, sphere_attributes)
   sphere_trivao.vao = sphere_vao
   // SPHERE POSITION
-  collectibles.push (sphere_trivao)
   let x = Math.random() * 2000
   let z = Math.random() * 2000
   let y = Math.random() * 200
@@ -484,6 +495,17 @@ async function initCollectibles() {
   sphere_trivao.position_point = position_point.add (sphere_trivao.centroid)
   let sphere_pos = Matrix4.translate (x, y, z)
   sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (10,10,10))
+  while (checkObjectToObjectCollision (sphere_trivao, sphere_pos) && i != 0) {
+    x = Math.random() * 2000
+    z = Math.random() * 2000
+    y = Math.random() * 1000
+    position_point = new Vector3 (x, y, z)
+
+    sphere_trivao.position_point = position_point
+    sphere_pos = Matrix4.translate(x, y, z)
+    sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (10,10,10))
+  }
+  collectibles.push (sphere_trivao)
   collectiblePositions.push (sphere_pos)
   generateVisualHitBoxes ()
 }
@@ -679,6 +701,34 @@ function checkCollision (object) {
   }
   return false;
 }
+
+/**
+ * sees if one object is within bounding box of any other object
+ * @param {*} input_obj
+ * @param {*} pos_mat
+ * @returns T if is within BB, F if not
+ */
+function checkObjectToObjectCollision (input_obj, pos_mat) {
+  for (let i = 0; i < collectibles.length; i++) {
+    let c_obj = collectibles[i]
+    let c_pos = c_obj.position_point
+    if (c_obj == null || c_pos == null) {
+      console.log ("Bad obj in collision check")
+      continue
+    }
+    let c_min = collectiblePositions[i].multiplyVector (c_obj.min)
+    let c_max = collectiblePositions[i].multiplyVector (c_obj.max)
+    let p_max = pos_mat.multiplyVector (input_obj.max)
+    let p_min = pos_mat.multiplyVector (input_obj.min)
+
+    if  ((p_min.x <= c_max.x && p_max.x >= c_min.x)
+      && (p_min.y <= c_max.y && p_max.y >= c_min.y) 
+      && (p_min.z <= c_max.z && p_max.z >= c_min.z))
+      return true;
+  }
+  return false;
+}
+
 
 /**
  * Handles player inputs when a key is pressed down
