@@ -70,11 +70,8 @@ export function readBoxen (box_string, shaderProgram) {
     // minimum # of points to construct a cube
     let npoints = 2
     for (let z = 0; z < npoints; z++) {
-      let depthProp = z / npoints;
       for (let y = 0; y < npoints; y++) {
-        let heightProp = y / npoints;
         for (let x = 0; x < npoints; x++) {
-          let widthProp = x / npoints;
           positions.push(new Vector3 (width  * x + offsetX, 
                           height * y + offsetY,
                           depth  * z + offsetZ))

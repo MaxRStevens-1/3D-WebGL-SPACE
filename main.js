@@ -154,7 +154,6 @@ function render() {
     collectible.vao.drawIndexed(gl.TRIANGLES)
     collectible.vao.unbind()
   }
-  shaderProgram.setUniform1f ('normTexture', 2)
   // DRAW HITBOXES IF OPTION SELECTED
   if (show_hitboxes)
   {
@@ -479,8 +478,6 @@ async function initCollectibles() {
   sNor = sphere_trivao.flat_normals ()
   // SPHERE ATTRIBUTES
   const sphere_attributes = new VertexAttributes()
-  console.log ("textures legnth = " + sTex.length / 2)
-  console.log ("put length=" + sPos.length / 3)
   sphere_attributes.addAttribute ('position', sPos.length / 3, 3, sPos)
   sphere_attributes.addAttribute ('normal', sPos.length / 3, 3, sNor)
   sphere_attributes.addAttribute ('texPosition', sPos.length / 3, 2, sTex)
@@ -495,7 +492,7 @@ async function initCollectibles() {
   sphere_trivao.position_point = position_point.add (sphere_trivao.centroid)
   let sphere_pos = Matrix4.translate (x, y, z)
   sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (10,10,10))
-  while (checkObjectToObjectCollision (sphere_trivao, sphere_pos) && i != 0) {
+  while (checkObjectToObjectCollision (sphere_trivao, sphere_pos)) {
     x = Math.random() * 2000
     z = Math.random() * 2000
     y = Math.random() * 1000
@@ -516,6 +513,7 @@ async function initCollectibles() {
 function generateVisualHitBoxes () {
   for (let i = 0; i < collectibles.length; i++) {
     let c_obj = collectibles[i]
+
     let c_pos = c_obj.position_point
     if (c_obj == null || c_pos == null) {
       console.log ("Bad obj in collision check")
@@ -525,9 +523,9 @@ function generateVisualHitBoxes () {
     let min = c_obj.min//collectiblePositions[i].multiplyVector (c_obj.min)
     let max = c_obj.max//collectiblePositions[i].multiplyVector (c_obj.max)
     
-    let height = Math.abs (max.y) + Math.abs(min.y)
-    let width = Math.abs (max.x) + Math.abs(min.x)
-    let depth = Math.abs (max.z) + Math.abs(min.z)
+    let height = Math.abs (max.y) - min.y 
+    let width = Math.abs (max.x) - min.x 
+    let depth = Math.abs (max.z) - min.z
     //  GENERATE HIT CUBE
     let cube_attrs = generateCube (height, width, depth, min.x, min.y, min.z)
     let cube_pos = cube_attrs[0]
@@ -545,6 +543,13 @@ function generateVisualHitBoxes () {
     let cube_vao = new VertexArray (shaderProgram, cube_attributes)
     cube_trivao.vao = cube_vao
     cube_trivao.position_point = c_pos
+    console.log ("max of obj="+c_obj.max)
+    console.log ("max of hb="+cube_trivao.max)
+    console.log ("min of obj="+c_obj.min)
+    console.log ("min of hb="+cube_trivao.min)
+    console.log ("when y=0:" + min.y)
+    console.log ("when y=1:"+ (height+ min.y))
+    console.log ("_________________________________________________")
     // ADD TO BOUNDING BOX ARRAYS
     bounding_boxes.push (cube_trivao)
     bounding_boxes_positions.push (collectiblePositions[i])
@@ -607,7 +612,6 @@ function rotateCollectibles() {
 
     // calculate force of gravity
     let force = forceOfGravity (ship_distance, 100000)
-    let force_vector = new Vector3(force, force, force)
     // calculate unit vector between pointing from ship to sphere
     // B - A / | B - A |
     let sphere = collectibles[sphere_index]
@@ -623,7 +627,7 @@ function rotateCollectibles() {
     let pos = collectiblePositions[i]
     const centroid = collectible.centroid
     const center = new Vector3(centroid.x, 1, centroid.z)
-    pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, degrees * Math.random()))
+    //pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, degrees * Math.random()))
     collectiblePositions[i] = pos
     if (show_hitboxes)
       bounding_boxes_positions[i] = pos
