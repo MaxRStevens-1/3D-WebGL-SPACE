@@ -61,8 +61,8 @@ const objects = []
 const objectPositions = []
 
 // BOUNDINGBOXES
-const bounding_boxes = []
-const bounding_boxes_positions = []
+let bounding_boxes = []
+let bounding_boxes_positions = []
 let show_hitboxes = false
 
 // KEYPRESSES
@@ -288,19 +288,20 @@ async function initialize() {
   getTextFromWorld()
 
 
-  // PLAYER CAMERA
+  // PLAYER CAMERA INIT
   const from = new Vector3(100, 100, 100)
   const to = new Vector3(0, 0, 0)
   const worldup = new Vector3(0, 1, 0)
   camera = new SlideCamera (from, to, worldup, .01, 300, 1)
 
   // SKYBOX INIT
-  
   skyboxShaderProgram = skybox_shader_program()
   let skyboxAttributes = generateSkybox()
   skyboxVao = new VertexArray (skyboxShaderProgram, skyboxAttributes)
-  // load in skybox cube
+  
+  // SKYBOX TEXTURE 
   await loadCubemap ("./bkg/lightblue", "png", gl.TEXTURE1)
+  // MOON TEXTURE
   const moonImage = await readImage('./moon.png')
   createTexture2d (moonImage, gl.TEXTURE2)
 
@@ -436,9 +437,8 @@ async function initCollectibles() {
 
   let lines = await readObjFromFile(name);
   shipShader = ship_shader();
-
+  // CREATING INTERACTABLE OBJS
   for (let i = 0; i < 5; i++) {
-    // create trimesh vao object
     //const collectible = createObject(lines)
     // SHIP 2 MIRROR
     const collectible = createShipMirrorObject (lines, shaderProgram)
@@ -504,7 +504,6 @@ async function initCollectibles() {
   }
   collectibles.push (sphere_trivao)
   collectiblePositions.push (sphere_pos)
-  generateVisualHitBoxes ()
 }
 
 /**
@@ -519,10 +518,10 @@ function generateVisualHitBoxes () {
       console.log ("Bad obj in collision check")
       continue
     }
-    
-    let min = c_obj.min//collectiblePositions[i].multiplyVector (c_obj.min)
-    let max = c_obj.max//collectiblePositions[i].multiplyVector (c_obj.max)
-    
+    // ** Poorly designed code, rewrite **
+    let min = c_obj.min
+    let max = c_obj.max
+
     let height = Math.abs (max.y) - min.y 
     let width = Math.abs (max.x) - min.x 
     let depth = Math.abs (max.z) - min.z
@@ -543,13 +542,6 @@ function generateVisualHitBoxes () {
     let cube_vao = new VertexArray (shaderProgram, cube_attributes)
     cube_trivao.vao = cube_vao
     cube_trivao.position_point = c_pos
-    console.log ("max of obj="+c_obj.max)
-    console.log ("max of hb="+cube_trivao.max)
-    console.log ("min of obj="+c_obj.min)
-    console.log ("min of hb="+cube_trivao.min)
-    console.log ("when y=0:" + min.y)
-    console.log ("when y=1:"+ (height+ min.y))
-    console.log ("_________________________________________________")
     // ADD TO BOUNDING BOX ARRAYS
     bounding_boxes.push (cube_trivao)
     bounding_boxes_positions.push (collectiblePositions[i])
@@ -619,19 +611,6 @@ function rotateCollectibles() {
                             .normalize().scalarMultiply(force)
     camera.end_point = camera.end_point.add (gravity_direction)
   }
-
-
-  // ROTATE OBJECTS
-  for (let i = 0; i < collectibles.length; i++) {
-    const collectible = collectibles[i]
-    let pos = collectiblePositions[i]
-    const centroid = collectible.centroid
-    const center = new Vector3(centroid.x, 1, centroid.z)
-    //pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, degrees * Math.random()))
-    collectiblePositions[i] = pos
-    if (show_hitboxes)
-      bounding_boxes_positions[i] = pos
-  }
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
   let ship_offset_z = 3.6
@@ -643,11 +622,29 @@ function rotateCollectibles() {
   ship.position_point = ship_position;
   objectPositions[0] = Matrix4.translate (ship_position.x, ship_position.y, 
                                           ship_position.z)
+                                          
+
+  // CHECK IF PLAYER CAN MOVE
   if (checkCollision (ship)) {
     camera.end_point = camera.position
+    console.log ("COLLISION DETECTED")
   }
-  else
+  else {
+    // MOVE PLAYER
     camera.timeStepMove()
+
+    // ROTATE OBJECTS
+    for (let i = 0; i < collectibles.length; i++) {
+      const collectible = collectibles[i]
+      let pos = collectiblePositions[i]
+      const centroid = collectible.centroid
+      const center = new Vector3(centroid.x, 1, centroid.z)
+      pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, .5))
+      collectiblePositions[i] = pos
+      if (show_hitboxes)
+        bounding_boxes_positions[i] = pos
+    }
+  }
   render()
   requestAnimationFrame(rotateCollectibles)
 }
@@ -685,22 +682,20 @@ function forceOfGravity (distance, mass_impact) {
  * @returns 
  */
 function checkCollision (object) {
-  for (let i = 0; i < collectibles.length - 1; i++) {
+  let p_max = objectPositions[0].multiplyVector (object.max)
+  let p_min = objectPositions[0].multiplyVector (object.min)
+  for (let i = 0; i < collectibles.length -1; i++) {
     let c_obj = collectibles[i]
-    let c_pos = c_obj.position_point
-    if (c_obj == null || c_pos == null) {
+    if (c_obj == null) {
       console.log ("Bad obj in collision check")
       continue
     }
-    let c_min = collectiblePositions[i].multiplyVector (c_obj.min)
-    let c_max = collectiblePositions[i].multiplyVector (c_obj.max)
-    let p_max = objectPositions[0].multiplyVector (object.max)
-    let p_min = objectPositions[0].multiplyVector (object.min)
-
-
+    let minmax_arr = c_obj.checkAdjustedBoundingBox (collectiblePositions[i])
+    let c_min = minmax_arr[0]
+    let c_max = minmax_arr[1]
     if  ((p_min.x <= c_max.x && p_max.x >= c_min.x)
       && (p_min.y <= c_max.y && p_max.y >= c_min.y) 
-      && (p_min.z <= c_max.z && p_max.z >= c_min.z))
+      && (p_min.z <= c_max.z && p_max.z >= c_min.z)) 
       return true;
   }
   return false;
@@ -762,10 +757,19 @@ function onKeyDown(event) {
   } if (event.key ==  '-' || keysPressed.down) {
     camera.adjustVelocityElevate (-moveDelta)
     keysPressed.down = true
-  } if (event.key == 'h')
+  } if (event.key == 'h') {
     show_hitboxes = !show_hitboxes
-  //render()
+    if (!show_hitboxes) {
+        bounding_boxes = []
+        bounding_boxes_positions = []
+    } else
+      generateVisualHitBoxes()
+  }
 }
+/**
+ * Removes keypressed if key is pushed up
+ * @param {} event 
+ */
 function onKeyUp (event) {
   if (event.key === 'ArrowUp' || event.key == 'w') {
     keysPressed.w = false
@@ -782,6 +786,9 @@ function onKeyUp (event) {
   }
 }
 
+/**
+ * Shadows init
+ */
 function getTextFromWorld () {
   lightCamera = new Camera(lightPosition, lightTarget, new Vector3(0, 1, 0));
   lightFromWorld = lightCamera.eyeFromWorld;

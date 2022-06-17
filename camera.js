@@ -93,9 +93,6 @@ export class Camera {
     rotaterMatrix.set(3, 2, 0)
     rotaterMatrix.set(3, 3, 1)
 
-    // console.log(this.forward.magnitude)
-    // console.log(this.right.magnitude)
-    // console.log(up.magnitude)
 
     this.eyeFromWorld = rotaterMatrix.multiplyMatrix(translater)
   }
@@ -119,23 +116,32 @@ export class SlideCamera extends Camera {
     this.end_point = this.position
   }
 
+  /**
+   * Adds velocity to velocity vector end_point
+   * @param {*} added_velocity 
+   */
   adjustVelocityAdvance (added_velocity) {
     this.advance_move += added_velocity
     this.end_point = this.end_point.add(this.forward.scalarMultiply(added_velocity))
-    //this.step_value_x = (this.end_point.x - this.position.x) * this.time_delta
    }
+   
+  /**
+   * Adds velocity to velocity vector end_point
+   * @param {*} added_velocity 
+   */
    adjustVelocityStrafe (added_velocity) {
     this.strafe_move +=  added_velocity
-    //this.end_point = this.end_point.y + added_velocity
     this.end_point = this.end_point.add(this.right.scalarMultiply(added_velocity))
-    //this.step_value_y = (this.end_point.y - this.position.y) * this.time_delta
 
    }
+   
+  /**
+   * Adds velocity to velocity vector end_point
+   * @param {*} added_velocity 
+   */
    adjustVelocityElevate (added_velocity) {
     this.elvate_move += added_velocity
-    //this.end_point = this.end_point.z + added_velocity
     this.end_point = this.end_point.add(this.worldup.scalarMultiply(added_velocity))
-    //this.step_value_z = (this.end_point.z - this.position.z) * this.time_delta
 
    }
    
@@ -145,32 +151,9 @@ export class SlideCamera extends Camera {
     */
    timeStepMove () {
     this.position.x += (this.end_point.x - this.position.x) * this.time_delta
-    
     this.position.y += (this.end_point.y - this.position.y) * this.time_delta
-
     this.position.z += (this.end_point.z - this.position.z) * this.time_delta
-    /*if (Math.abs (this.strafe_move) < this.min_value)
-      this.strafe_move = 0
-    else {
-      this.strafe (this.strafe_move * this.time_delta)
-      this.strafe_move = this.strafe_move - this.time_delta * this.strafe_move
-      //this.position.z = this.position.z + this.step_value_z 
-      //this.step_value_z = (this.end_point.z - this.position.z) * this.time_delta
-    }
-    if (Math.abs (this.advance_move) < this.min_value)
-      this.advance_move = 0
-    else {
-      this.advance (this.advance_move * this.time_delta)
-      this.advance_move = this.advance_move - this.time_delta * this.advance_move
-      //this.position.x = this.position.x + this.step_value_x
-      //this.step_value_x = (this.end_point.x - this.position.x) * this.time_delta
-    }
-    if (Math.abs (this.elvate_move) < this.min_value)
-      this.elvate_move = 0
-    else {
-      this.elevate (this.elvate_move * this.time_delta)
-      this.elvate_move = this.elvate_move - this.time_delta * this.elvate_move
-    }*/
+    
     this.reorient()
    }
 }

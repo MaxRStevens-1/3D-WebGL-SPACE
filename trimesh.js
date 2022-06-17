@@ -28,6 +28,9 @@ export class Trimesh {
   }
 
 
+  /**
+   * sets min / max to model space min/max
+   */
   createBoundingBox() {
     let min = new Vector3(this.positions[0].x, this.positions[0].y,this.positions[0].z)
     let max = new Vector3(this.positions[0].x, this.positions[0].y,this.positions[0].z) 
@@ -59,6 +62,44 @@ export class Trimesh {
 
     this.min = min
     this.max = max
+  }
+  /**
+   * returns a world space min/max
+   * @param {*} input_mat4 
+   * @return returns an array of [adjusted min, adjusted max]
+   */
+  checkAdjustedBoundingBox (input_mat4) {
+    let adj_min = input_mat4.multiplyVector (this.positions[0]).xyz
+    let adj_max = input_mat4.multiplyVector (this.positions[0]).xyz
+    //console.log (adj_min)
+    //console.log (adj_max)
+    for (let i = 1; i < this.positions.length; i++)
+    {
+      let pos = input_mat4.multiplyVector (this.positions[i])
+      // update x
+      if (pos.x < adj_min.x) {
+        adj_min.x = pos.x
+      }
+      else if (pos.x > adj_max.x) {
+        adj_max.x = pos.x 
+      }
+      // update y
+      if (pos.y < adj_min.y) {
+        adj_min.y = pos.y 
+      }
+      else if (pos.y > adj_max.y) {
+        adj_max.y = pos.y 
+      }
+      // update z
+      if (pos.z < adj_min.z) {
+        adj_min.z = pos.z
+      }
+      else if (pos.z > adj_max.z) {
+        adj_max.z = pos.z
+      }
+    }
+    
+    return [adj_min, adj_max]
   }
 
   generateCentroid () {
