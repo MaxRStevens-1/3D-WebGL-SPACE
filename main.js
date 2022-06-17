@@ -687,20 +687,33 @@ function forceOfGravity (distance, mass_impact) {
 function checkCollision (object) {
   let p_max = objectPositions[0].multiplyVector (object.max)
   let p_min = objectPositions[0].multiplyVector (object.min)
-  for (let i = 0; i < collectibles.length -1; i++) {
+  for (let i = 0; i < collectibles.length - 1; i++) {
     let c_obj = collectibles[i]
     let c_hitbox = bounding_boxes[i]
-    if (c_obj == null) {
+    if (c_obj == null || c_hitbox == null) {
       console.log ("Bad obj in collision check")
       continue
     }
-    let minmax_arr = c_hitbox.checkAdjustedBoundingBox (collectiblePositions[i])
+    let minmax_arr = c_obj.checkAdjustedBoundingBox (collectiblePositions[i])
     let c_min = minmax_arr[0]
     let c_max = minmax_arr[1]
     if  ((p_min.x <= c_max.x && p_max.x >= c_min.x)
       && (p_min.y <= c_max.y && p_max.y >= c_min.y) 
       && (p_min.z <= c_max.z && p_max.z >= c_min.z)) 
-      return true;
+    {
+        console.log ("object min ="+c_min)
+        console.log ("object max ="+c_max)
+        console.log ("player min = "+p_min)     
+        console.log ("player max = "+p_max)     
+        minmax_arr = c_hitbox.checkAdjustedBoundingBox (bounding_boxes_positions[i])
+        c_min = minmax_arr[0]
+        c_max = minmax_arr[1]
+        console.log ("hb min = "+c_min) 
+        console.log ("hb max = "+c_max)
+        console.log ("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXxxx")
+
+        return true;
+    }
   }
   return false;
 }
@@ -726,8 +739,9 @@ function checkObjectToObjectCollision (input_obj, pos_mat) {
 
     if  ((p_min.x <= c_max.x && p_max.x >= c_min.x)
       && (p_min.y <= c_max.y && p_max.y >= c_min.y) 
-      && (p_min.z <= c_max.z && p_max.z >= c_min.z))
+      && (p_min.z <= c_max.z && p_max.z >= c_min.z)) {
       return true;
+    }
   }
   return false;
 }
