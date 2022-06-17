@@ -504,6 +504,9 @@ async function initCollectibles() {
   }
   collectibles.push (sphere_trivao)
   collectiblePositions.push (sphere_pos)
+  // GENERATE HITBOXES
+  generateVisualHitBoxes()
+
 }
 
 /**
@@ -686,11 +689,12 @@ function checkCollision (object) {
   let p_min = objectPositions[0].multiplyVector (object.min)
   for (let i = 0; i < collectibles.length -1; i++) {
     let c_obj = collectibles[i]
+    let c_hitbox = bounding_boxes[i]
     if (c_obj == null) {
       console.log ("Bad obj in collision check")
       continue
     }
-    let minmax_arr = c_obj.checkAdjustedBoundingBox (collectiblePositions[i])
+    let minmax_arr = c_hitbox.checkAdjustedBoundingBox (collectiblePositions[i])
     let c_min = minmax_arr[0]
     let c_max = minmax_arr[1]
     if  ((p_min.x <= c_max.x && p_max.x >= c_min.x)
@@ -759,11 +763,9 @@ function onKeyDown(event) {
     keysPressed.down = true
   } if (event.key == 'h') {
     show_hitboxes = !show_hitboxes
-    if (!show_hitboxes) {
-        bounding_boxes = []
-        bounding_boxes_positions = []
-    } else
-      generateVisualHitBoxes()
+  } if (event.key == ' ') {
+    camera.advance (10)
+    camera.end_point = camera.position
   }
 }
 /**
