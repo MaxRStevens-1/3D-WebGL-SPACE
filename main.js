@@ -30,7 +30,7 @@ let skyboxVao
 let shipShader
 
 // SPHERE
-let sphere_index = 5
+let sphere_index
 
 // SHADOW
 let depthTextureUnit
@@ -62,7 +62,6 @@ const objectPositions = []
 
 // BOUNDINGBOXES
 let bounding_boxes = []
-let bounding_boxes_positions = []
 let show_hitboxes = false
 
 // KEYPRESSES
@@ -165,7 +164,7 @@ function render() {
     shaderProgram.setUniform1f('ambientFactor', .6)
     for (let i = 0; i < bounding_boxes.length; i++) {
       const bounding_box = bounding_boxes[i]
-      const pos = bounding_boxes_positions[i]
+      const pos = collectiblePositions[i]
       // SET AS ATTRIBUTE
       shaderProgram.setUniformMatrix4('worldFromModel', pos)
       bounding_box.vao.bind()
@@ -462,9 +461,11 @@ async function initCollectibles() {
       collectible.position_point = position_point
       pos = Matrix4.translate(x, y, z)
       pos = pos.multiplyMatrix(Matrix4.scale(40, 40, 40))
+      console.log ("retrying to place obj due to collision")
     }
     collectiblePositions.push(pos)
     collectibles.push(collectible)
+    bounding_boxes.push (null)
 
   }
   // GENERATE SPHERE
@@ -492,6 +493,7 @@ async function initCollectibles() {
   sphere_trivao.position_point = position_point.add (sphere_trivao.centroid)
   let sphere_pos = Matrix4.translate (x, y, z)
   sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (10,10,10))
+  // ** NOTE ** Make helper method 2 do this
   while (checkObjectToObjectCollision (sphere_trivao, sphere_pos)) {
     x = Math.random() * 2000
     z = Math.random() * 2000
@@ -501,7 +503,10 @@ async function initCollectibles() {
     sphere_trivao.position_point = position_point
     sphere_pos = Matrix4.translate(x, y, z)
     sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (10,10,10))
+    console.log ("retrying to place obj due to collision")
   }
+  sphere_index = 1
+  bounding_boxes.push (null)
   collectibles.push (sphere_trivao)
   collectiblePositions.push (sphere_pos)
   // GENERATE HITBOXES
@@ -546,8 +551,11 @@ function generateVisualHitBoxes () {
     cube_trivao.vao = cube_vao
     cube_trivao.position_point = c_pos
     // ADD TO BOUNDING BOX ARRAYS
-    bounding_boxes.push (cube_trivao)
-    bounding_boxes_positions.push (collectiblePositions[i])
+    bounding_boxes[i] = (cube_trivao)
+    //console.log (cube_trivao.positions)
+    if (i == 0) {
+    }
+
   }
 }
 
@@ -635,7 +643,7 @@ function rotateCollectibles() {
   else {
     // MOVE PLAYER
     camera.timeStepMove()
-
+    
     // ROTATE OBJECTS
     for (let i = 0; i < collectibles.length; i++) {
       const collectible = collectibles[i]
@@ -644,8 +652,14 @@ function rotateCollectibles() {
       const center = new Vector3(centroid.x, 1, centroid.z)
       pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, .5))
       collectiblePositions[i] = pos
-      if (show_hitboxes)
-        bounding_boxes_positions[i] = pos
+      if (i == 0) {
+
+        let center = pos.multiplyVector (bounding_boxes[i].centroid)
+        let arb_pos = pos.multiplyVector (bounding_boxes[i].positions[7])
+        let edge_distance = new Vector3 (arb_pos.x - center.x,
+                                        arb_pos.y - center.y,
+                                        arb_pos.z - center.z)
+      }
     }
   }
   render()
@@ -687,33 +701,51 @@ function forceOfGravity (distance, mass_impact) {
 function checkCollision (object) {
   let p_max = objectPositions[0].multiplyVector (object.max)
   let p_min = objectPositions[0].multiplyVector (object.min)
+  //console.log ("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXxxx")
+
   for (let i = 0; i < collectibles.length - 1; i++) {
     let c_obj = collectibles[i]
     let c_hitbox = bounding_boxes[i]
+    let pos = collectiblePositions[i]
     if (c_obj == null || c_hitbox == null) {
       console.log ("Bad obj in collision check")
       continue
     }
-    let minmax_arr = c_obj.checkAdjustedBoundingBox (collectiblePositions[i])
-    let c_min = minmax_arr[0]
-    let c_max = minmax_arr[1]
-    if  ((p_min.x <= c_max.x && p_max.x >= c_min.x)
-      && (p_min.y <= c_max.y && p_max.y >= c_min.y) 
-      && (p_min.z <= c_max.z && p_max.z >= c_min.z)) 
-    {
-        console.log ("object min ="+c_min)
-        console.log ("object max ="+c_max)
-        console.log ("player min = "+p_min)     
-        console.log ("player max = "+p_max)     
-        minmax_arr = c_hitbox.checkAdjustedBoundingBox (bounding_boxes_positions[i])
-        c_min = minmax_arr[0]
-        c_max = minmax_arr[1]
-        console.log ("hb min = "+c_min) 
-        console.log ("hb max = "+c_max)
-        console.log ("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXxxx")
+    // GET WORLD POSITION OF VECTORS
+    let center = pos.multiplyVector (bounding_boxes[i].centroid)
+    let p_pos = object.position_point
+    // GET VECTOR FROM POSITION 2 CENTER
+    let proj_vec = p_pos.sub (center)
 
-        return true;
-    }
+    // SHIFT POINTS TO WORLD SPACE
+    let pos_0 = pos.multiplyVector (c_hitbox.positions[0]).xyz
+    let pos_1 = pos.multiplyVector (c_hitbox.positions[1]).xyz
+    let pos_2 = pos.multiplyVector (c_hitbox.positions[2]).xyz
+    let pos_4 = pos.multiplyVector (c_hitbox.positions[4]).xyz
+
+    // GET LENGTH OF X, Y, AND Z PERIMTERES
+    let ad = pos_1.sub (pos_0)
+    let cd = pos_2.sub (pos_0)
+    let hd = pos_4.sub (pos_0)
+    let x_length = Math.sqrt (ad.x*ad.x + ad.y*ad.y + ad.z*ad.z)
+    let y_length = Math.sqrt (cd.x*cd.x + cd.y*cd.y + cd.z*cd.z)
+    let z_length = Math.sqrt (hd.x*hd.x + hd.y*hd.y + hd.z*hd.z)
+
+    // GET local unit vectors
+    let x_local = pos_1.sub (pos_0).scalarMultiply (1/x_length)
+    let y_local = pos_2.sub (pos_0).scalarMultiply (1/y_length)
+    let z_local = pos_4.sub (pos_0).scalarMultiply (1/z_length)
+    // CREATE what the adjusted xyz pos is
+    let point_x = Math.abs (x_local.dot (proj_vec) * 2)
+    let point_y = Math.abs (y_local.dot (proj_vec) * 2)
+    let point_z = Math.abs (z_local.dot (proj_vec) * 2)
+    // COMPARE with world length
+    if (point_x <= x_length 
+      && point_y <= y_length 
+      && point_z <= z_length)
+      return true
+
+
   }
   return false;
 }

@@ -15,6 +15,7 @@ export class Trimesh {
     this.indices = indices
     this.textures = textures
     this.position_point = null;
+    this.edge_distance = null
     // set default values of min n max
     // very large constant
     this.min = new Vector3 (1000000,1000000, 100000)
@@ -71,8 +72,6 @@ export class Trimesh {
   checkAdjustedBoundingBox (input_mat4) {
     let adj_min = input_mat4.multiplyVector (this.positions[0]).xyz
     let adj_max = input_mat4.multiplyVector (this.positions[0]).xyz
-    //console.log (adj_min)
-    //console.log (adj_max)
     for (let i = 1; i < this.positions.length; i++)
     {
       let pos = input_mat4.multiplyVector (this.positions[i])
@@ -101,6 +100,8 @@ export class Trimesh {
     
     return [adj_min, adj_max]
   }
+
+
 
   generateCentroid () {
     this.centroid = new Vector3 ((this.min.x + this.max.x) / 2,
