@@ -443,7 +443,7 @@ async function initinteractables() {
     // SHIP 2 MIRROR
     const collectible = createShipMirrorObject (lines, shaderProgram)
     // create positions for collectible
-\    let x = Math.random() * 4000 - 1500
+    let x = Math.random() * 4000 - 1500
     let z = Math.random() * 4000 - 1500
     let y = Math.random() * 4000 - 1500
     let position_point = new Vector3 (x, y, z)
@@ -746,8 +746,6 @@ function checkCollision (object) {
     point_z = Math.abs (z_local.dot (proj_vec_max) * 2)
     if (point_x <= x_length && point_y <= y_length && point_z <= z_length)
       return true
-
-
   }
   return false;
 }
