@@ -2,7 +2,6 @@ import { VertexAttributes } from './vertex-attributes'
 import { ShaderProgram } from './shader-program'
 import { VertexArray } from './vertex-array'
 import { Vector3, Vector4 } from './vector'
-import { RenderObject } from './renderObject.js'
 import { Matrix4 } from './matrix'
 import { TrimeshVao } from '././trimesh'
 

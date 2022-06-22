@@ -240,5 +240,58 @@ export class TrimeshVao extends Trimesh {
   constructor(positions, normals, indices, vao, textures) {
     super (positions, normals, indices, textures)
     this.vao = vao
+    this.num_objects = 1
   }
 }
+
+export class TrimeshVaoGrouping extends TrimeshVao {
+
+  /**
+   * 
+   * @param {*} positions vec3 positions
+   * @param {*} normals vec3 norms
+   * @param {*} indices vec3 indicies
+   * @param {*} vao vao of obj grouping
+   * @param {*} textures texels of obj
+   * @param {*} texture_index texture index of obj
+   * @param {*} num_objects # of objects in grouping
+   * @param {*} toWorldFromModels worldFromModel mat4s
+   */
+  constructor (positions, normals, indices, vao, textures, texture_index, num_objects) 
+  {
+    super (positions, normals, indices, vao, textures, num_objects)
+    this.texture_index = texture_index
+    this.num_objects = num_objects
+    this.toWorldFromModels = []
+    this.bounding_box = null
+
+  }
+
+  //sets mat4 at index
+  setMatrix (worldFromModel, index) {
+    this.toWorldFromModels[index] = worldFromModel
+  }
+  // gets mat4 at index
+  getMatrix (index) {
+    return this.toWorldFromModels[index]
+  }
+
+  setBoundingBox (bounding_box) {
+    this.bounding_box = bounding_box
+  }
+  getBoundingBox () {return this.bounding_box}
+}
+
+  /**
+   * 
+   * @param {} trimesh_vao_group_arr trimesh vao group array
+   * @returns gets total # of objs in group array
+   */
+   export function getGroupLength (trimesh_vao_group_arr) 
+   {
+     let size = 0
+     for (let i = 0; i < trimesh_vao_group_arr.length; i++) {
+       size += trimesh_vao_group_arr[i].size 
+     }
+     return size
+   }

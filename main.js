@@ -5,7 +5,7 @@ import { VertexArray } from './vertex-array'
 import { Matrix4 } from './matrix'
 import { Vector3, Vector4 } from './vector'
 import { Terrain } from './terrain'
-import { Trimesh, TrimeshVao } from './trimesh'
+import { Trimesh, TrimeshVao, TrimeshVaoGrouping, getGroupLength } from './trimesh'
 import { Camera, SlideCamera } from './camera'
 import { reserveDepthTexture, initializeDepthFbo, initializeDepthProgram, createTexture2d} from './shadow'
 import {readBoxen, generateCube} from './box_gen'
@@ -39,8 +39,8 @@ let fbo
 let depthProgram;
 const textDim = 256;
 
-let lightPosition = new Vector3(800, 200, 800)
-let lightTarget = new Vector3(400, 100, 0);
+let lightPosition = new Vector3(800, 2000, 800)
+let lightTarget = new Vector3(400, 0, 0);
 let lightCamera;
 let lightFromWorld;
 let clipFromLight;
@@ -56,14 +56,12 @@ const ambientFactor = 0.7;
 
 // OBJECTS
 const interactables = [];
-const interactable_positions = []
 let degrees = 1;
 
 const objects = []
 const objectPositions = []
 
 // BOUNDINGBOXES
-let bounding_boxes = []
 let show_hitboxes = false
 
 // KEYPRESSES
@@ -103,80 +101,60 @@ function render() {
   shaderProgram.setUniform3f('diffuseColor', diffuseColor[0], diffuseColor[1], diffuseColor[2])
   shaderProgram.setUniform1f('shininess', shininess)
   shaderProgram.setUniform1f('ambientFactor', ambientFactor)
-
   shaderProgram.setUniformMatrix4('clipFromEye', clipFromEye)
   shaderProgram.setUniformMatrix4('eyeFromWorld', camera.eyeFromWorld)
   shaderProgram.setUniformMatrix4('worldFromModel', Matrix4.identity())
-
   shaderProgram.setUniformMatrix4("textureFromWorld", textureFromWorld);
   shaderProgram.setUniform1i("depthTexture", depthTextureUnit);
-
-  // Draw terrain
-  /*shaderProgram.setUniform1i('normTexture', 1);
-  vao.bind()
-  vao.drawIndexed(gl.TRIANGLES)
-  vao.unbind()
-  */
   // RESET TEXTURE
   shaderProgram.setUniform1i('normTexture', 0);
 
-  // DRAWS OBJECTS
-  /*
-  shaderProgram.setUniform3f('albedo', albedo[0], albedo[1], albedo[2])
-  shaderProgram.setUniform3f('specularColor', specularColor[0], specularColor[1], specularColor[2])
-  shaderProgram.setUniform3f('diffuseColor', diffuseColor[0], diffuseColor[1], diffuseColor[2])
-  shaderProgram.setUniform1f('shininess', shininess)
-  shaderProgram.setUniform1f('ambientFactor', ambientFactor)
-  for (let i = 0; i < objects.length; i++) {
-    const object = objects[i]
-    const pos = objectPositions[i]
-    // SET AS ATTRIBUTE
-    shaderProgram.setUniformMatrix4('worldFromModel', pos)
-    object.vao.bind()
-    object.vao.drawIndexed(gl.TRIANGLES)
-    object.vao.unbind()
-  }*/
 
-  
+    // DRAW HITBOXES IF OPTION SELECTED
+    if (show_hitboxes)
+    {
+      gl.depthMask(false);
+      shaderProgram.setUniform3f('albedo', .7, .7, .5)
+      shaderProgram.setUniform3f('specularColor', .2, .4, .3)
+      shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
+      shaderProgram.setUniform1f('shininess', 40)
+      shaderProgram.setUniform1f('ambientFactor', .6)
+      for (let i = 0; i < interactables.length; i++) {
+        const interactable = interactables[i]
+        for (let j = 0; j < interactable.num_objects; j++) {
+          const bounding_box = interactable.bounding_box
+          const pos = interactable.getMatrix (j)
+          // SET AS ATTRIBUTE
+          shaderProgram.setUniformMatrix4('worldFromModel', pos)
+          bounding_box.vao.bind()
+          bounding_box.vao.drawIndexed(gl.TRIANGLES)
+          bounding_box.vao.unbind()
+        }
+      }
+      gl.depthMask(true);
+    }
+
+
+
   shaderProgram.setUniform3f('albedo', .9, .5, .3)
   shaderProgram.setUniform3f('specularColor', .8, .9, .1)
   shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
   shaderProgram.setUniform1f('shininess', 80)
   shaderProgram.setUniform1f('ambientFactor', .4)
   for (let i = 0; i < interactables.length; i++) {
-    const collectible = interactables[i]
-    const pos = interactable_positions[i]
-    // SET AS ATTRIBUTE
-    shaderProgram.setUniformMatrix4('worldFromModel', pos)
-    // sphere index
-    if (i == sphere_index)
-      shaderProgram.setUniform1i('normTexture', 2);
-    collectible.vao.bind()
-    collectible.vao.drawIndexed(gl.TRIANGLES)
-    collectible.vao.unbind()
-  }
-  // DRAW HITBOXES IF OPTION SELECTED
-  if (show_hitboxes)
-  {
-    gl.depthMask(false);
-    shaderProgram.setUniform3f('albedo', .7, .7, .5)
-    shaderProgram.setUniform3f('specularColor', .2, .4, .3)
-    shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-    shaderProgram.setUniform1f('shininess', 40)
-    shaderProgram.setUniform1f('ambientFactor', .6)
-    for (let i = 0; i < bounding_boxes.length; i++) {
-      const bounding_box = bounding_boxes[i]
-      const pos = interactable_positions[i]
+    const interactable = interactables[i]
+    interactable.vao.bind()
+    for (let j = 0; j < interactable.num_objects; j++) {
+      const pos = interactable.getMatrix(j)
       // SET AS ATTRIBUTE
       shaderProgram.setUniformMatrix4('worldFromModel', pos)
-      bounding_box.vao.bind()
-      bounding_box.vao.drawIndexed(gl.TRIANGLES)
-      bounding_box.vao.unbind()
-    }
-    gl.depthMask(true);
+      // sphere index
+      if (i == sphere_index)
+        shaderProgram.setUniform1i('normTexture', 2);
+      interactable.vao.drawIndexed(gl.TRIANGLES)
   }
-
-
+  interactable.vao.unbind()
+}
   shaderProgram.unbind()
 
 
@@ -197,15 +175,6 @@ function render() {
     object.vao.unbind()
   }
 
-  // OTHER SHIPS AS MIRROR
-  /*
-  for (let i = 0; i < interactables.length; i++) {
-
-    shipShader.setUniformMatrix4('worldFromModel', interactable_positions[i]);
-    interactables[i].vao.bind()
-    interactables[i].vao.drawIndexed (gl.TRIANGLES)
-    interactables[i].vao.unbind()
-  } */
   shipShader.unbind()
 }
 
@@ -219,13 +188,15 @@ function renderDepths(width, height, fbo) {
   const clipFromWorld = clipFromLight.multiplyMatrix(lightFromWorld);
   depthProgram.bind();
   depthProgram.setUniformMatrix4('clipFromWorld', clipFromWorld);
-  for (let i = 0; i < interactables.length; i++) {
-    const collectible = interactables[i]
-    const pos = interactable_positions[i]
-    depthProgram.setUniformMatrix4('worldFromModel', pos)
-    collectible.vao.bind()
-    collectible.vao.drawIndexed(gl.TRIANGLES)
-    collectible.vao.unbind()
+  for (let i = 0; i < interactables; i++) {
+    const interactable = interactables[i]
+    for (let j = 0; j < interactable.num_objects; j++) {
+      const pos = interactable.getMatrix (j)
+      depthProgram.setUniformMatrix4('worldFromModel', pos)
+      interactable.vao.bind()
+      interactable.vao.drawIndexed(gl.TRIANGLES)
+      interactable.vao.unbind()
+    }
   }
 
   for (let i = 0; i < objects.length; i++) {
@@ -438,36 +409,32 @@ async function initinteractables() {
   let lines = await readObjFromFile(name);
   shipShader = ship_shader();
   // CREATING INTERACTABLE OBJS
-  for (let i = 0; i < 400; i++) {
-    //const collectible = createObject(lines)
+  let num_ships = 200
+  const interactable = createShipMirrorObject (lines, shaderProgram, num_ships)
+  for (let i = 0; i < num_ships; i++) {
     // SHIP 2 MIRROR
-    const collectible = createShipMirrorObject (lines, shaderProgram)
-    // create positions for collectible
+    // create positions for interactable
     let x = Math.random() * 4000 - 1500
     let z = Math.random() * 4000 - 1500
     let y = Math.random() * 4000 - 1500
-    let position_point = new Vector3 (x, y, z)
-
-    collectible.position_point = position_point
     let pos = Matrix4.translate(x, y, z)
-    pos = pos.multiplyMatrix(Matrix4.scale(40, 40, 40))
+    pos = pos.multiplyMatrix(Matrix4.scale(20, 20, 20))
     // FIND POSITION THAT DOES NOT LIE WITHIN OTHER OBJ
-    while (checkObjectToObjectCollision (collectible, pos) && i != 0) {
+    while (checkObjectToObjectCollision (interactable, pos) && i != 0) {
       x = Math.random() * 4000 - 1500
       z = Math.random() * 4000 - 1500
       y = Math.random() * 4000 - 1500
       position_point = new Vector3 (x, y, z)
   
-      collectible.position_point = position_point
       pos = Matrix4.translate(x, y, z)
-      pos = pos.multiplyMatrix(Matrix4.scale(40, 40, 40))
+      pos = pos.multiplyMatrix(Matrix4.scale(20, 20, 20))
       console.log ("retrying to place obj due to collision")
     }
-    interactable_positions.push(pos)
-    interactables.push(collectible)
-    bounding_boxes.push (null)
 
+    //interactable_positions.push(pos)
+    interactable.setMatrix (pos, i)
   }
+  interactables.push(interactable)
   // ** NOTE ** THIS IS HORRIBLE, NEEDS REWRITE
   // GENERATE SPHERE
   let sphere_attributes_arr = generateSphere (20, 20, 20)
@@ -475,7 +442,8 @@ async function initinteractables() {
   let sNor = sphere_attributes_arr[1]
   let sInd = sphere_attributes_arr[2]
   let sTex = sphere_attributes_arr[3]
-  let sphere_trivao = new TrimeshVao (sPos, sNor, sInd, null, sTex)
+  //let sphere_trivao = new TrimeshVao (sPos, sNor, sInd, null, sTex)
+  let sphere_trivao = new TrimeshVaoGrouping (sPos, sNor, sInd, null, sTex, null, 1)
   sPos = sphere_trivao.flat_positions ()
   sNor = sphere_trivao.flat_normals ()
   // SPHERE ATTRIBUTES
@@ -499,17 +467,14 @@ async function initinteractables() {
     x = Math.random() * 2000
     z = Math.random() * 2000
     y = Math.random() * 1000
-    position_point = new Vector3 (x, y, z)
 
-    sphere_trivao.position_point = position_point
     sphere_pos = Matrix4.translate(x, y, z)
     sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (10,10,10))
     console.log ("retrying to place obj due to collision")
   }
   sphere_index = interactables.length
-  bounding_boxes.push (null)
+  sphere_trivao.setMatrix (sphere_pos, 0)
   interactables.push (sphere_trivao)
-  interactable_positions.push (sphere_pos)
   // GENERATE HITBOXES
   generateVisualHitBoxes()
 
@@ -521,9 +486,7 @@ async function initinteractables() {
 function generateVisualHitBoxes () {
   for (let i = 0; i < interactables.length; i++) {
     let c_obj = interactables[i]
-
-    let c_pos = c_obj.position_point
-    if (c_obj == null || c_pos == null) {
+    if (c_obj == null) {
       console.log ("Bad obj in collision check")
       continue
     }
@@ -550,10 +513,8 @@ function generateVisualHitBoxes () {
     cube_attributes.addIndices (cube_faces)
     let cube_vao = new VertexArray (shaderProgram, cube_attributes)
     cube_trivao.vao = cube_vao
-    cube_trivao.position_point = c_pos
     // ADD TO BOUNDING BOX ARRAYS
-    bounding_boxes[i] = (cube_trivao)
-
+    c_obj.setBoundingBox(cube_trivao)
   }
 }
 
@@ -564,7 +525,7 @@ function generateVisualHitBoxes () {
  * @param {*} ship_shader 
  * @returns 
  */
-function createShipMirrorObject (lines, ship_shader) {
+function createShipMirrorObject (lines, ship_shader, num_objs) {
   let obj_trimesh = Trimesh.readObjToJson(lines)
   let obj_attributes = new VertexAttributes()
   let positions = obj_trimesh.flat_positions()
@@ -574,11 +535,10 @@ function createShipMirrorObject (lines, ship_shader) {
   obj_attributes.addAttribute('normal',   normals.length   / 3, 3, normals)
   obj_attributes.addIndices  (indices)
   let obj_vao = new VertexArray(ship_shader, obj_attributes)
-  let trivao = new TrimeshVao  (obj_trimesh.positions,
-                               obj_trimesh.normals,
-                               obj_trimesh.indices,
-                               obj_vao)
-  return trivao
+  let tri_vao_group = new TrimeshVaoGrouping  (obj_trimesh.positions,
+      obj_trimesh.normals, obj_trimesh.indices, 
+      obj_vao, null, null, num_objs)
+  return tri_vao_group
 }
 
 /**
@@ -607,17 +567,20 @@ function createObject(lines) {
 function rotateInteractables(now) {
   // CHECK GRAVITY
   let ship = objects[0]
-  let ship_distance = checkSphereDistance (ship);
-  if (ship_distance <= 2000 && ship_distance >= 100)  {
+  let ship_distance = checkSphereDistance (ship, objectPositions[0]);
+  if (ship_distance <= 2000 && ship_distance >= 20)  {
     // MOVE PLAYER WITH FORCE OF GRAVITY
     // calculate force of gravity
     let force = forceOfGravity (ship_distance, 100000)
     // calculate unit vector between pointing from ship to sphere
     // B - A / | B - A |
     let sphere = interactables[sphere_index]
-    let gravity_direction = sphere.position_point.add(ship.position_point.inverse())
+    let sphere_center = sphere.getMatrix (0).multiplyVector (sphere.centroid).xyz
+    let ship_center = objectPositions[0].multiplyVector (ship.centroid).xyz
+    let gravity_direction = sphere_center.add(ship_center.inverse())
                             .normalize().scalarMultiply(force)
     camera.end_point = camera.end_point.add (gravity_direction)
+    console.log ("force=" + force)
   }
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
@@ -640,15 +603,16 @@ function rotateInteractables(now) {
   else {
     // MOVE PLAYER
     camera.timeStepMove()
-    
     // ROTATE OBJECTS
     for (let i = 0; i < interactables.length; i++) {
-      const collectible = interactables[i]
-      let pos = interactable_positions[i]
-      const centroid = collectible.centroid
-      const center = new Vector3(centroid.x, 1, centroid.z)
-      pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, .25 * Math.random() + .25))
-      interactable_positions[i] = pos
+      const interactable = interactables[i]
+      for (let j = 0; j < interactable.num_objects; j++) {
+        let pos = interactable.getMatrix(j)
+        const centroid = interactable.centroid
+        const center = new Vector3(centroid.x, 1, centroid.z)
+        pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, .25 * Math.random() + .25))
+        interactable.setMatrix (pos, j)
+      }
     }
   }
   // LOG FPS
@@ -656,7 +620,8 @@ function rotateInteractables(now) {
   const deltaTime = now - then;          // compute time since last frame
   then = now;                            // remember time for next frame
   const fps = 1 / deltaTime;             // compute frames per second
-  console.log (fps)
+  if (fps < 58)
+    console.log (fps)
   // RENDER AND REQUEST 2 DRAW
   render()
   requestAnimationFrame(rotateInteractables)
@@ -668,13 +633,16 @@ function rotateInteractables(now) {
  * @param {} object 
  * @returns 
  */
-function checkSphereDistance (object) {
+function checkSphereDistance (object, o_pos) {
   let sphere = interactables[sphere_index]
-  let s_point = sphere.position_point
-  let o_point = object.position_point
+  let s_pos = sphere.getMatrix (0)
+
+  let s_point = s_pos.multiplyVector (sphere.centroid)
+  let o_point = o_pos.multiplyVector (object.centroid)
   let distance = Math.sqrt (Math.pow(s_point.x - o_point.x, 2) 
                             + Math.pow(s_point.y - o_point.y, 2) 
                             + Math.pow(s_point.z - o_point.z, 2)) 
+  console.log (distance)
   return distance
 }
 
@@ -697,55 +665,58 @@ function forceOfGravity (distance, mass_impact) {
 function checkCollision (object) {
   
   for (let i = 0; i < interactables.length - 1; i++) {
-    let c_obj = interactables[i]
-    let c_hitbox = bounding_boxes[i]
-    let pos = interactable_positions[i]
-    if (c_obj == null || c_hitbox == null) {
-      console.log ("Bad obj in collision check")
-      continue
-    }
-    // GET WORLD POSITION OF CENTER OF BB
-    let center = pos.multiplyVector (bounding_boxes[i].centroid)
-    // THE MIN TEST POINT OF OTHER BB
-    let p_pos_min = objectPositions[0].multiplyVector (object.min).xyz
-    // GET VECTOR FROM POSITION 2 CENTER
-    let proj_vec_min = p_pos_min.sub (center)
+    const interactable = interactables[i]
+    for (let j = 0; j < interactable.num_objects; j++) {
+      let c_obj = interactable
+      let c_hitbox = interactable.getBoundingBox()
+      let pos = interactable.getMatrix(j)
+      if (c_obj == null || c_hitbox == null) {
+        console.log ("Bad obj in collision check")
+        continue
+      }
+      // GET WORLD POSITION OF CENTER OF BB
+      let center = pos.multiplyVector (c_hitbox.centroid)
+      // THE MIN TEST POINT OF OTHER BB
+      let p_pos_min = objectPositions[0].multiplyVector (object.min).xyz
+      // GET VECTOR FROM POSITION 2 CENTER
+      let proj_vec_min = p_pos_min.sub (center)
 
-    // SHIFT POINTS TO WORLD SPACE
-    let pos_0 = pos.multiplyVector (c_hitbox.positions[0]).xyz
-    let pos_1 = pos.multiplyVector (c_hitbox.positions[1]).xyz
-    let pos_2 = pos.multiplyVector (c_hitbox.positions[2]).xyz
-    let pos_4 = pos.multiplyVector (c_hitbox.positions[4]).xyz
+      // SHIFT POINTS TO WORLD SPACE
+      let pos_0 = pos.multiplyVector (c_hitbox.positions[0]).xyz
+      let pos_1 = pos.multiplyVector (c_hitbox.positions[1]).xyz
+      let pos_2 = pos.multiplyVector (c_hitbox.positions[2]).xyz
+      let pos_4 = pos.multiplyVector (c_hitbox.positions[4]).xyz
 
-    // GET LENGTH OF X, Y, AND Z PERIMTERES
-    let ad = pos_1.sub (pos_0)
-    let cd = pos_2.sub (pos_0)
-    let hd = pos_4.sub (pos_0)
-    let x_length = Math.sqrt (ad.x*ad.x + ad.y*ad.y + ad.z*ad.z)
-    let y_length = Math.sqrt (cd.x*cd.x + cd.y*cd.y + cd.z*cd.z)
-    let z_length = Math.sqrt (hd.x*hd.x + hd.y*hd.y + hd.z*hd.z)
+      // GET LENGTH OF X, Y, AND Z PERIMTERES
+      let ad = pos_1.sub (pos_0)
+      let cd = pos_2.sub (pos_0)
+      let hd = pos_4.sub (pos_0)
+      let x_length = Math.sqrt (ad.x*ad.x + ad.y*ad.y + ad.z*ad.z)
+      let y_length = Math.sqrt (cd.x*cd.x + cd.y*cd.y + cd.z*cd.z)
+      let z_length = Math.sqrt (hd.x*hd.x + hd.y*hd.y + hd.z*hd.z)
 
-    // GET local unit vectors
-    let x_local = pos_1.sub (pos_0).scalarMultiply (1/x_length)
-    let y_local = pos_2.sub (pos_0).scalarMultiply (1/y_length)
-    let z_local = pos_4.sub (pos_0).scalarMultiply (1/z_length)
-    // CREATE what the adjusted xyz pos is
-    let point_x = Math.abs (x_local.dot (proj_vec_min) * 2)
-    let point_y = Math.abs (y_local.dot (proj_vec_min) * 2)
-    let point_z = Math.abs (z_local.dot (proj_vec_min) * 2)
-    // COMPARE with world length
-    if (point_x <= x_length && point_y <= y_length && point_z <= z_length)
-      return true
-    
-    // NOW try objects max point
-    
-    let p_pos_max = objectPositions[0].multiplyVector (object.max).xyz
-    let proj_vec_max = p_pos_max.sub (center)
-    point_x = Math.abs (x_local.dot (proj_vec_max) * 2)
-    point_y = Math.abs (y_local.dot (proj_vec_max) * 2)
-    point_z = Math.abs (z_local.dot (proj_vec_max) * 2)
-    if (point_x <= x_length && point_y <= y_length && point_z <= z_length)
-      return true
+      // GET local unit vectors
+      let x_local = pos_1.sub (pos_0).scalarMultiply (1/x_length)
+      let y_local = pos_2.sub (pos_0).scalarMultiply (1/y_length)
+      let z_local = pos_4.sub (pos_0).scalarMultiply (1/z_length)
+      // CREATE what the adjusted xyz pos is
+      let point_x = Math.abs (x_local.dot (proj_vec_min) * 2)
+      let point_y = Math.abs (y_local.dot (proj_vec_min) * 2)
+      let point_z = Math.abs (z_local.dot (proj_vec_min) * 2)
+      // COMPARE with world length
+      if (point_x <= x_length && point_y <= y_length && point_z <= z_length)
+        return true
+      
+      // NOW try objects max point
+      
+      let p_pos_max = objectPositions[0].multiplyVector (object.max).xyz
+      let proj_vec_max = p_pos_max.sub (center)
+      point_x = Math.abs (x_local.dot (proj_vec_max) * 2)
+      point_y = Math.abs (y_local.dot (proj_vec_max) * 2)
+      point_z = Math.abs (z_local.dot (proj_vec_max) * 2)
+      if (point_x <= x_length && point_y <= y_length && point_z <= z_length)
+        return true
+    } 
   }
   return false;
 }
@@ -757,22 +728,25 @@ function checkCollision (object) {
  * @returns T if is within BB, F if not
  */
 function checkObjectToObjectCollision (input_obj, pos_mat) {
-  for (let i = 0; i < interactables.length; i++) {
-    let c_obj = interactables[i]
-    let c_pos = c_obj.position_point
-    if (c_obj == null || c_pos == null) {
-      console.log ("Bad obj in collision check")
-      continue
-    }
-    let c_min = interactable_positions[i].multiplyVector (c_obj.min)
-    let c_max = interactable_positions[i].multiplyVector (c_obj.max)
-    let p_max = pos_mat.multiplyVector (input_obj.max)
-    let p_min = pos_mat.multiplyVector (input_obj.min)
+  for (let i = 0; i < interactables.length - 1; i++) {
+    const interactable = interactables[i]
+    for (let j = 0; j < interactable.num_objects; j++) {
+      let c_obj = interactable
+      let c_pos = interactable.getMatrix (j)
+      if (c_obj == null) {
+        console.log ("Bad obj in collision check")
+        continue
+      }
+      let c_min = c_pos.multiplyVector (c_obj.min)
+      let c_max = c_pos.multiplyVector (c_obj.max)
+      let p_max = pos_mat.multiplyVector (input_obj.max)
+      let p_min = pos_mat.multiplyVector (input_obj.min)
 
-    if  ((p_min.x <= c_max.x && p_max.x >= c_min.x)
-      && (p_min.y <= c_max.y && p_max.y >= c_min.y) 
-      && (p_min.z <= c_max.z && p_max.z >= c_min.z)) {
-      return true;
+      if  ((p_min.x <= c_max.x && p_max.x >= c_min.x)
+        && (p_min.y <= c_max.y && p_max.y >= c_min.y) 
+        && (p_min.z <= c_max.z && p_max.z >= c_min.z)) {
+        return true;
+      }
     }
   }
   return false;
