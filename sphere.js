@@ -18,52 +18,34 @@ export function generateSphere(nlatitudes, nlongitudes, radius) {
     const normals = []
     const indices = []
     const texPositions = [];
-  
-    const seedPositions = []
-    for (let ilatitude = 0; ilatitude < nlatitudes; ilatitude++) {
-      const radians = (ilatitude / (nlatitudes - 1)) * Math.PI - Math.PI / 2
-      const x = radius * Math.cos(radians)
-      const y = radius * Math.sin(radians)
-      const vec4 = new Vector4()
-      vec4.setall(x, y, 0, 1)
-      seedPositions.push(vec4)
-  
-    }
-  
-    for (let ilongitude = 0; ilongitude < nlongitudes; ilongitude++) {
-      const degrees = (ilongitude / nlongitudes) * 360
-      const rotater = Matrix4.rotateY(degrees)
-      for (let ilatitude = 0; ilatitude < nlatitudes; ilatitude++) {
-        const p = rotater.multiplyVector(seedPositions[ilatitude])
-        positions.push(new Vector3 (p.x, p.y + 3, p.z))
+
+    for (let j = 0; j <= nlongitudes; j++) {
+      let adjusted_j = j * Math.PI / nlongitudes;
+      let sin_j = Math.sin(adjusted_j) * radius;
+      let cos_j = Math.cos(adjusted_j) * radius;
+      for (let i = 0; i <= nlatitudes; i++) {
+        let adjusted_i = i * 2 * Math.PI / nlongitudes;
+        let sin_i = Math.sin(adjusted_i);
+        let cos_i = Math.cos(adjusted_i);
+        let p = new Vector3 (sin_i * sin_j, cos_j, cos_i * sin_j + 1)
+        console.log ("p="+p)
+        positions.push (p)
         const normal = p.normalize()
         normals.push(new Vector3 (normal.x, normal.y, normal.z))
-  
-        texPositions.push(ilongitude / nlongitudes, ilatitude / nlatitudes);
+        texPositions.push(i/nlongitudes); 
+        texPositions.push(j/nlongitudes); 
       }
     }
+
+    for (let j = 0; j < nlongitudes; j++) {
+      for (let i = 0; i < nlongitudes; i++) {
+        let p1 = j * (nlongitudes + 1) + i
+        let p2 = p1 + (nlongitudes + 1)
   
-    for (let ilongitude = 0; ilongitude < nlongitudes; ilongitude++) {
-      const iNextLongitude = (ilongitude + 1) % nlongitudes
-      for (let ilatitude = 0; ilatitude < nlatitudes - 1; ilatitude++) {
-        const iNextLatitude = (ilatitude + 1) % nlatitudes
-        indices.push(
-          ilongitude * nlatitudes + ilatitude,
-          ilongitude * nlatitudes + iNextLatitude,
-          iNextLongitude * nlatitudes + iNextLatitude
-        )
-        indices.push(
-          ilongitude * nlatitudes + ilatitude,
-          iNextLongitude * nlatitudes + iNextLatitude,
-          iNextLongitude * nlatitudes + ilatitude
-        )
+        indices.push(p1, p2, p1 + 1)
+        indices.push(p1 + 1, p2, p2 + 1)
       }
     }
-    /*const attributes = new VertexAttributes()
-    attributes.addAttribute('position', nlatitudes * nlongitudes, 3, positions)
-    attributes.addAttribute('normal', nlatitudes * nlongitudes, 3, normals)
-    attributes.addAttribute('texPosition', nlatitudes * nlongitudes, 2, texPositions)
-    attributes.addIndices(indices)*/
-    console.log (positions)
+    console.log (texPositions)
     return [positions, normals, indices, texPositions]
   }

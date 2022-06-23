@@ -461,7 +461,7 @@ async function initinteractables() {
   let position_point = new Vector3 (x, y, z)
   sphere_trivao.position_point = position_point.add (sphere_trivao.centroid)
   let sphere_pos = Matrix4.translate (x, y, z)
-  sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (10,10,10))
+  sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (20,20,20))
   // ** NOTE ** Make helper method 2 do this
   while (checkObjectToObjectCollision (sphere_trivao, sphere_pos)) {
     x = Math.random() * 2000
@@ -469,7 +469,7 @@ async function initinteractables() {
     y = Math.random() * 1000
 
     sphere_pos = Matrix4.translate(x, y, z)
-    sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (10,10,10))
+    sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (20,20,20))
     console.log ("retrying to place obj due to collision")
   }
   sphere_index = interactables.length
@@ -580,7 +580,6 @@ function rotateInteractables(now) {
     let gravity_direction = sphere_center.add(ship_center.inverse())
                             .normalize().scalarMultiply(force)
     camera.end_point = camera.end_point.add (gravity_direction)
-    console.log ("force=" + force)
   }
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
@@ -642,7 +641,6 @@ function checkSphereDistance (object, o_pos) {
   let distance = Math.sqrt (Math.pow(s_point.x - o_point.x, 2) 
                             + Math.pow(s_point.y - o_point.y, 2) 
                             + Math.pow(s_point.z - o_point.z, 2)) 
-  console.log (distance)
   return distance
 }
 
