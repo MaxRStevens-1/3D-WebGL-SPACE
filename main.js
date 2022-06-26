@@ -46,6 +46,10 @@ let lightFromWorld;
 let clipFromLight;
 
 
+// LIGHT
+let sun_index = 0  
+
+
 
 // BLING-FONG
 const albedo = [.6, .6, .6]
@@ -96,7 +100,6 @@ function render() {
   shaderProgram.bind()
 
   // Bling-Fong basic init
-  shaderProgram.setUniform3f('albedo', albedo[0], albedo[1], albedo[2])
   shaderProgram.setUniform3f('specularColor', specularColor[0], specularColor[1], specularColor[2])
   shaderProgram.setUniform3f('diffuseColor', diffuseColor[0], diffuseColor[1], diffuseColor[2])
   shaderProgram.setUniform1f('shininess', shininess)
@@ -108,40 +111,46 @@ function render() {
   shaderProgram.setUniform1i("depthTexture", depthTextureUnit);
   // RESET TEXTURE
   shaderProgram.setUniform1i('normTexture', 0);
-
-
-    // DRAW HITBOXES IF OPTION SELECTED
-    if (show_hitboxes)
-    {
-      gl.depthMask(false);
-      shaderProgram.setUniform3f('albedo', .7, .7, .5)
-      shaderProgram.setUniform3f('specularColor', .2, .4, .3)
-      shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-      shaderProgram.setUniform1f('shininess', 40)
-      shaderProgram.setUniform1f('ambientFactor', .6)
-      for (let i = 0; i < interactables.length; i++) {
-        const interactable = interactables[i]
-        for (let j = 0; j < interactable.num_objects; j++) {
-          const bounding_box = interactable.bounding_box
-          const pos = interactable.getMatrix (j)
-          // SET AS ATTRIBUTE
-          shaderProgram.setUniformMatrix4('worldFromModel', pos)
-          bounding_box.vao.bind()
-          bounding_box.vao.drawIndexed(gl.TRIANGLES)
-          bounding_box.vao.unbind()
-        }
+  // DRAW HITBOXES IF OPTION SELECTED
+  if (show_hitboxes)
+  {
+    gl.depthMask(false);
+    shaderProgram.setUniform3f('specularColor', .2, .4, .3)
+    shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
+    shaderProgram.setUniform1f('shininess', 40)
+    shaderProgram.setUniform1f('ambientFactor', .6)
+    for (let i = 0; i < interactables.length; i++) {
+      const interactable = interactables[i]
+      for (let j = 0; j < interactable.num_objects; j++) {
+        const bounding_box = interactable.bounding_box
+        const pos = interactable.getMatrix (j)
+        // SET AS ATTRIBUTE
+        shaderProgram.setUniformMatrix4('worldFromModel', pos)
+        bounding_box.vao.bind()
+        bounding_box.vao.drawIndexed(gl.TRIANGLES)
+        bounding_box.vao.unbind()
       }
-      gl.depthMask(true);
     }
-
-
-
-  shaderProgram.setUniform3f('albedo', .9, .5, .3)
+    gl.depthMask(true);
+  }
+  
+  shaderProgram.setUniform3f('specularColor', .99, .99, .1)
+  shaderProgram.setUniform3f('diffuseColor', .99, .99, .1)
+  shaderProgram.setUniform1f('shininess', 99)
+  shaderProgram.setUniform1f('ambientFactor', .99)
+  shaderProgram.setUniform1i('normTexture', 3);
+  let sun = interactables[sun_index]
+  let sun_position = sun.getMatrix (0)
+  shaderProgram.setUniformMatrix4 ('worldFromModel', sun_position)
+  sun.vao.bind()
+  sun.vao.drawIndexed (gl.TRIANGLES)
+  sun.vao.unbind()
+  
   shaderProgram.setUniform3f('specularColor', .8, .9, .1)
   shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
   shaderProgram.setUniform1f('shininess', 80)
   shaderProgram.setUniform1f('ambientFactor', .4)
-  for (let i = 0; i < interactables.length; i++) {
+  for (let i = sun_index; i < interactables.length; i++) {
     const interactable = interactables[i]
     interactable.vao.bind()
     for (let j = 0; j < interactable.num_objects; j++) {
@@ -275,7 +284,9 @@ async function initialize() {
   // MOON TEXTURE
   const moonImage = await readImage('./moon.png')
   createTexture2d (moonImage, gl.TEXTURE2)
-
+  // SUN teXTURE
+  const sunImage = await readImage ('./sunmap.jpg')
+  createTexture2d (sunImage, gl.TEXTURE3)
 
   const vertexSource = `
 uniform mat4 clipFromEye;
@@ -295,7 +306,7 @@ out vec2 flat_mixTexPosition;
 void main() {
   gl_PointSize = 3.0;
   gl_Position = clipFromEye * eyeFromWorld * worldFromModel * vec4(position, 1.0);
-  mixNormal = (eyeFromWorld * worldFromModel * vec4(normal.x, -normal.y, normal.z, 0)).xyz;
+  mixNormal = (eyeFromWorld * worldFromModel * vec4(normal.x, normal.y, normal.z, 0)).xyz;
   mixPosition =  (eyeFromWorld * worldFromModel * vec4(position, 1.0)).xyz;
   mixTexPosition = textureFromWorld * worldFromModel * vec4(position, 1.0);
   flat_mixTexPosition = texPosition;
@@ -304,7 +315,6 @@ void main() {
 
   const fragmentSource = `
 const vec3 lightDirection = normalize(vec3(1.0, 1.0, 3.0));
-uniform vec3 albedo;
 uniform vec3 diffuseColor;
 uniform vec3 specularColor;
 uniform float shininess;
@@ -325,7 +335,7 @@ void main() {
 
   // get normal texture
   vec4 realTexture = texture(normTexture, flat_mixTexPosition);
-  //vec3 albedo = texture(normTexture, flat_mixTexPosition).rgb;
+  vec3 albedo = texture(normTexture, flat_mixTexPosition).rgb;
   // calculate fragment depth and shadow
   vec4 texPosition = mixTexPosition / mixTexPosition.w;
   float fragmentDepth = texPosition.z;
@@ -405,6 +415,11 @@ async function initializeObjects() {
 async function initinteractables() {
   // credit to ezgi bakim
   const name = './spaceship.obj';
+  // CREATE SUN
+  let offset = lightPosition
+
+  interactables.push (generateSphereObject (20, 20, 20, offset, 3))
+  console.log (interactables)
 
   let lines = await readObjFromFile(name);
   shipShader = ship_shader();
@@ -419,6 +434,7 @@ async function initinteractables() {
     let y = Math.random() * 4000 - 1500
     let pos = Matrix4.translate(x, y, z)
     pos = pos.multiplyMatrix(Matrix4.scale(20, 20, 20))
+  
     // FIND POSITION THAT DOES NOT LIE WITHIN OTHER OBJ
     while (checkObjectToObjectCollision (interactable, pos) && i != 0) {
       x = Math.random() * 4000 - 1500
@@ -430,20 +446,40 @@ async function initinteractables() {
       pos = pos.multiplyMatrix(Matrix4.scale(20, 20, 20))
       console.log ("retrying to place obj due to collision")
     }
-
     //interactable_positions.push(pos)
     interactable.setMatrix (pos, i)
   }
   interactables.push(interactable)
   // ** NOTE ** THIS IS HORRIBLE, NEEDS REWRITE
   // GENERATE SPHERE
-  let sphere_attributes_arr = generateSphere (20, 20, 20)
+  let x = Math.random() * 2000
+  let y = Math.random() * 200
+  let z = Math.random() * 2000
+  offset = new Vector3 (x,y,z)
+  sphere_index = interactables.length
+  interactables.push (generateSphereObject (20, 20, 20, offset, 1))
+  // GENERATE HITBOXES
+  generateVisualHitBoxes()
+
+}
+
+/**
+ * Generates an physical physical sphere obejct
+ * @param {float} nlat 
+ * @param {float} nlong 
+ * @param {float} radius 
+ * @param {vec3} offest
+ * @param {bool} doTexture
+ */
+function generateSphereObject (nlat, nlong, radius, offset, texture_index) {
+  let sphere_attributes_arr = generateSphere (nlat, nlong, radius)
   let sPos = sphere_attributes_arr[0]
   let sNor = sphere_attributes_arr[1]
   let sInd = sphere_attributes_arr[2]
   let sTex = sphere_attributes_arr[3]
   //let sphere_trivao = new TrimeshVao (sPos, sNor, sInd, null, sTex)
-  let sphere_trivao = new TrimeshVaoGrouping (sPos, sNor, sInd, null, sTex, null, 1)
+  let sphere_trivao = new TrimeshVaoGrouping (sPos, sNor, sInd, null, sTex, texture_index, 1)
+  console.log (sphere_trivao)
   sPos = sphere_trivao.flat_positions ()
   sNor = sphere_trivao.flat_normals ()
   // SPHERE ATTRIBUTES
@@ -455,9 +491,9 @@ async function initinteractables() {
   let sphere_vao = new VertexArray (shaderProgram, sphere_attributes)
   sphere_trivao.vao = sphere_vao
   // SPHERE POSITION
-  let x = Math.random() * 2000
-  let z = Math.random() * 2000
-  let y = Math.random() * 200
+  let x = offset.x
+  let z = offset.z
+  let y = offset.y
   let position_point = new Vector3 (x, y, z)
   sphere_trivao.position_point = position_point.add (sphere_trivao.centroid)
   let sphere_pos = Matrix4.translate (x, y, z)
@@ -472,12 +508,8 @@ async function initinteractables() {
     sphere_pos = sphere_pos.multiplyMatrix (Matrix4.scale (20,20,20))
     console.log ("retrying to place obj due to collision")
   }
-  sphere_index = interactables.length
   sphere_trivao.setMatrix (sphere_pos, 0)
-  interactables.push (sphere_trivao)
-  // GENERATE HITBOXES
-  generateVisualHitBoxes()
-
+  return sphere_trivao
 }
 
 /**
@@ -662,7 +694,7 @@ function forceOfGravity (distance, mass_impact) {
  */
 function checkCollision (object) {
   
-  for (let i = 0; i < interactables.length - 1; i++) {
+  for (let i = sun_index; i < interactables.length - 1; i++) {
     const interactable = interactables[i]
     for (let j = 0; j < interactable.num_objects; j++) {
       let c_obj = interactable

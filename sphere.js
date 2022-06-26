@@ -13,6 +13,7 @@ import { Vector3, Vector4 } from './vector'
  * @param {*} radius 
  * @returns 
  */
+
 export function generateSphere(nlatitudes, nlongitudes, radius) {
     const positions = []
     const normals = []
@@ -28,7 +29,6 @@ export function generateSphere(nlatitudes, nlongitudes, radius) {
         let sin_i = Math.sin(adjusted_i);
         let cos_i = Math.cos(adjusted_i);
         let p = new Vector3 (sin_i * sin_j, cos_j, cos_i * sin_j + 1)
-        console.log ("p="+p)
         positions.push (p)
         const normal = p.normalize()
         normals.push(new Vector3 (normal.x, normal.y, normal.z))
