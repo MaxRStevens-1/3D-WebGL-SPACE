@@ -22,6 +22,7 @@ let camera
 let moveDelta = 5
 let turnDelta = 1
 let then = 0
+
 // SKYBOX
 let skyboxShaderProgram
 let skyboxVao
@@ -31,7 +32,8 @@ let shipShader
 
 // SPHERE
 let sphere_index
-
+// is theta used to calc moon position in rotation around sun
+let moon_theta = 0
 // SHADOW
 let depthTextureUnit
 let textureFromWorld
@@ -228,7 +230,7 @@ function renderDepths(width, height, fbo) {
 function onResizeWindow() {
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.1, 5000)
+  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.1, 50000)
   render()
   renderDepths(textDim, textDim, fbo)
 }
@@ -363,7 +365,7 @@ void main() {
   shaderProgram = new ShaderProgram(vertexSource, fragmentSource)
   vao = new VertexArray(shaderProgram, attributes)
 
-  await initinteractables()
+  await initInteractables()
   await initializeObjects()
 
   window.addEventListener('resize', onResizeWindow)
@@ -412,7 +414,7 @@ async function initializeObjects() {
 /**
  * Initalize non- player objects
  */
-async function initinteractables() {
+async function initInteractables() {
   // credit to ezgi bakim
   const name = './spaceship.obj';
   // CREATE SUN
@@ -424,7 +426,7 @@ async function initinteractables() {
   let lines = await readObjFromFile(name);
   shipShader = ship_shader();
   // CREATING INTERACTABLE OBJS
-  let num_ships = 200
+  let num_ships = 100
   const interactable = createShipMirrorObject (lines, shaderProgram, num_ships)
   for (let i = 0; i < num_ships; i++) {
     // SHIP 2 MIRROR
@@ -452,12 +454,9 @@ async function initinteractables() {
   interactables.push(interactable)
   // ** NOTE ** THIS IS HORRIBLE, NEEDS REWRITE
   // GENERATE SPHERE
-  let x = Math.random() * 2000
-  let y = Math.random() * 200
-  let z = Math.random() * 2000
-  offset = new Vector3 (x,y,z)
   sphere_index = interactables.length
   interactables.push (generateSphereObject (20, 20, 20, offset, 1))
+  interactables[sphere_index].setMatrix (interactables[0].getMatrix(0), 0)
   // GENERATE HITBOXES
   generateVisualHitBoxes()
 
@@ -613,6 +612,21 @@ function rotateInteractables(now) {
                             .normalize().scalarMultiply(force)
     camera.end_point = camera.end_point.add (gravity_direction)
   }
+
+  // MOVE MOON AROUND SUN
+  let radius = 2000
+  let sun = interactables[0]
+  let new_moon_x = Math.cos (moon_theta) * radius
+  let new_moon_z = Math.sin (moon_theta) * radius
+  let moon_grouping = interactables[sphere_index]
+  let moon_position = moon_grouping.getMatrix (0)
+  let sun_center = sun.getMatrix(0).multiplyVector(sun.centroid)
+  // READJUST TRANSLATION
+  moon_position.set (0, 3, new_moon_x + sun_center.x)
+  //moon_position.set (1, 3,  sun_center.y + )
+  moon_position.set (2, 3, new_moon_z + sun_center.z)
+  moon_theta += .001
+
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
   let ship_offset_z = 3.6
@@ -620,7 +634,6 @@ function rotateInteractables(now) {
   let ship_position = camera.position
                       .add (camera.forward.scalarMultiply(ship_offset_x)
                       .add (camera.right.scalarMultiply (ship_offset_z)))
-  
   ship.position_point = ship_position;
   objectPositions[0] = Matrix4.translate (ship_position.x, ship_position.y, 
                                           ship_position.z)
