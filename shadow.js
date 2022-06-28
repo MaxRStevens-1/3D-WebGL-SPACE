@@ -15,7 +15,7 @@ export function createTexture2d(image, textureUnit = gl.TEXTURE0) {
 }
 
 export function getTextFromWorld (lightPosition, lightTarget) {
-    const lightCamera = Camera.lookAt(lightPosition, lightTarget, new Vector3(0, 1, 0));
+    const lightCamera = new Camera(lightPosition, lightTarget, new Vector3(0, 1, 0));
     const lightFromWorld = lightCamera.matrix;
     const clipFromLight = Matrix4.fovPerspective(45, 1, 0.1, 1000);
     const matrices = [

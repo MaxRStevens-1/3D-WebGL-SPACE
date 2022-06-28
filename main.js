@@ -43,8 +43,8 @@ let fbo
 let depthProgram;
 const textDim = 256;
 
-let lightPosition = new Vector3(800, 2000, 800)
-let lightTarget = new Vector3(400, 0, 0);
+let lightPosition = new Vector3(1000, 1000, 1000)
+let lightTarget = new Vector3(999, -1000, 1000);
 let lightCamera;
 let lightFromWorld;
 let clipFromLight;
@@ -113,6 +113,7 @@ function render() {
   shaderProgram.setUniformMatrix4('worldFromModel', Matrix4.identity())
   shaderProgram.setUniformMatrix4("textureFromWorld", textureFromWorld);
   shaderProgram.setUniform1i("depthTexture", depthTextureUnit);
+  shaderProgram.setUniform3fv ('lightPosition', lightPosition)
   // RESET TEXTURE
   shaderProgram.setUniform1i('normTexture', 0);
   // DRAW HITBOXES IF OPTION SELECTED
@@ -140,7 +141,7 @@ function render() {
   
   shaderProgram.setUniform3f('specularColor', .99, .99, .1)
   shaderProgram.setUniform3f('diffuseColor', .99, .99, .1)
-  shaderProgram.setUniform1f('shininess', 99)
+  shaderProgram.setUniform1f('shininess', 30)
   shaderProgram.setUniform1f('ambientFactor', .99)
   shaderProgram.setUniform1i('normTexture', 3);
   let sun = interactables[sun_index]
@@ -152,8 +153,8 @@ function render() {
   
   shaderProgram.setUniform3f('specularColor', .8, .9, .1)
   shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-  shaderProgram.setUniform1f('shininess', 80)
-  shaderProgram.setUniform1f('ambientFactor', .4)
+  shaderProgram.setUniform1f('shininess', 255)
+  shaderProgram.setUniform1f('ambientFactor', .2)
   for (let i = 0; i < interactables.length; i++) {
     const interactable = interactables[i]
     interactable.vao.bind()
@@ -305,37 +306,42 @@ uniform mat4 clipFromEye;
 uniform mat4 eyeFromWorld;
 uniform mat4 worldFromModel;
 uniform mat4 textureFromWorld;
+uniform vec3 lightWorldPosition;
 
 in vec3 normal;
 in vec3 position;
 in vec2 texPosition;
 
+
+out vec2 flat_mixTexPosition;
 out vec3 mixNormal;
 out vec3 mixPosition;
 out vec4 mixTexPosition;
-out vec2 flat_mixTexPosition;
+out vec4 worldPosition;
 
 void main() {
   gl_PointSize = 3.0;
-  gl_Position = clipFromEye * eyeFromWorld * worldFromModel * vec4(position, 1.0);
+  worldPosition = worldFromModel * vec4(position, 1.0);
+  gl_Position = clipFromEye * eyeFromWorld * worldPosition;
   mixNormal = (eyeFromWorld * worldFromModel * vec4(normal.x, normal.y, normal.z, 0)).xyz;
-  mixPosition =  (eyeFromWorld * worldFromModel * vec4(position, 1.0)).xyz;
-  mixTexPosition = textureFromWorld * worldFromModel * vec4(position, 1.0);
+  mixPosition =  (eyeFromWorld * worldPosition).xyz;
+  mixTexPosition = textureFromWorld * worldPosition;
   flat_mixTexPosition = texPosition;
 }
   `;
 
   const fragmentSource = `
-const vec3 lightDirection = normalize(vec3(1.0, 1.0, 3.0));
+//uniform vec3 lightDirection;
+uniform vec3 lightPosition;
 uniform vec3 diffuseColor;
 uniform vec3 specularColor;
 uniform float shininess;
 uniform float ambientFactor;
-
 uniform sampler2D normTexture;
 uniform sampler2D depthTexture;
 
 in vec3 mixNormal;
+in vec4 worldPosition;
 in vec3 mixPosition;
 in vec4 mixTexPosition;
 in vec2 flat_mixTexPosition;
@@ -344,7 +350,6 @@ out vec4 fragmentColor;
 
 void main() {
   vec3 normal = normalize(mixNormal);
-
   // get normal texture
   vec4 realTexture = texture(normTexture, flat_mixTexPosition);
   vec3 albedo = texture(normTexture, flat_mixTexPosition).rgb;
@@ -353,24 +358,23 @@ void main() {
   float fragmentDepth = texPosition.z;
   float closestDepth = texture(depthTexture, texPosition.xy).r;
   float shadowFactor = closestDepth < fragmentDepth ? 0.5 : 1.0;
-
+  
   // specular
   vec3 eyeDirection = normalize(-mixPosition);
+  vec3 lightDirection = normalize (lightPosition - worldPosition.xyz);
   vec3 halfDirection = normalize(eyeDirection + lightDirection);
   float specularity = pow(max(0.0, dot(halfDirection, normal)), shininess);
   vec3 specular = specularity * specularColor;
-
   // ambient
   float litness = dot(normal, lightDirection);
   vec3 ambient = ambientFactor * albedo * diffuseColor;
   // diffuse
   vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor * shadowFactor;
   vec3 rgb = ambient + diffuse + specular;
-
   fragmentColor = realTexture * vec4(rgb, 1.0);
-
 }
   `;
+  
 
   shaderProgram = new ShaderProgram(vertexSource, fragmentSource)
   vao = new VertexArray(shaderProgram, attributes)
@@ -635,18 +639,19 @@ function rotateInteractables(now) {
   // MOVE EARTH AROUND SUN
   let radius = 2000
   let sun = interactables[celestial_bodies_index]
-  let new_earth_x = Math.cos (earth_theta) * radius
-  let new_earth_z = Math.sin (earth_theta) * radius
+  let new_earth_x = 2000//Math.cos (earth_theta) * radius
+  let new_earth_z = 2000 //Math.sin (earth_theta) * radius
   let earth = interactables[celestial_bodies_index]
   let earth_position = earth.getMatrix (earth_index)
+  let earth_center = earth_position.multiplyVector (earth.centroid)
   let sun_center = sun.getMatrix(sun_index).multiplyVector(sun.centroid)
   // READJUST TRANSLATION
   earth_position.set (0, 3, new_earth_x + sun_center.x)
+  //earth_position.set (1, 3, earth_center.y + 100)
   earth_position.set (2, 3, new_earth_z + sun_center.z)
   earth_theta += .001
 
   // MOVE MOON AROUND EARTH
-  let earth_center = earth_position.multiplyVector (earth.centroid)
   radius = 600
   let new_moon_x = Math.cos (moon_theta) * radius
   let new_moon_z = Math.sin (moon_theta) * radius
@@ -738,8 +743,8 @@ function forceOfGravity (distance, mass_impact) {
  * @returns 
  */
 function checkCollision (object) {
-  
-  for (let i = sun_index; i < interactables.length - 1; i++) {
+  return false;
+  for (let i = celestial_bodies_index + 1; i < interactables.length; i++) {
     const interactable = interactables[i]
     for (let j = 0; j < interactable.num_objects; j++) {
       let c_obj = interactable
@@ -859,7 +864,7 @@ function onKeyDown(event) {
   } if (event.key == 'h') {
     show_hitboxes = !show_hitboxes
   } if (event.key == ' ') {
-    camera.advance (10)
+    camera.advance (40)
     camera.end_point = camera.position
   }
 }
@@ -889,7 +894,7 @@ function onKeyUp (event) {
 function getTextFromWorld () {
   lightCamera = new Camera(lightPosition, lightTarget, new Vector3(0, 1, 0));
   lightFromWorld = lightCamera.eyeFromWorld;
-  clipFromLight = Matrix4.fovPerspective(45, 1, 0.1, 1000);
+  clipFromLight = Matrix4.fovPerspective(0, 1, 0.1, 50000);
   const matrices = [
     Matrix4.translate(0.5, 0.5, 0.5),
     Matrix4.scale(0.5, 0.5, 0.5),
