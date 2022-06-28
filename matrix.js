@@ -20,6 +20,12 @@ export class Matrix4 {
     return this.matrix
   }
 
+  copy () {
+    let return_mat = new Matrix4()
+    return_mat.matrix = [...this.matrix]
+    return return_mat
+  }
+
   static identity() {
     const m = new Matrix4()
     m.set(0, 0, 1)

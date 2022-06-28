@@ -31,8 +31,10 @@ let skyboxVao
 let shipShader
 
 // SPHERE
-let sphere_index
-// is theta used to calc moon position in rotation around sun
+let earth_index
+let moon_index
+// is theta used to calc earth position in rotation around sun
+let earth_theta = 0
 let moon_theta = 0
 // SHADOW
 let depthTextureUnit
@@ -50,7 +52,7 @@ let clipFromLight;
 
 // LIGHT
 let sun_index = 0  
-
+let celestial_bodies_index
 
 
 // BLING-FONG
@@ -142,7 +144,7 @@ function render() {
   shaderProgram.setUniform1f('ambientFactor', .99)
   shaderProgram.setUniform1i('normTexture', 3);
   let sun = interactables[sun_index]
-  let sun_position = sun.getMatrix (0)
+  let sun_position = sun.getMatrix (celestial_bodies_index)
   shaderProgram.setUniformMatrix4 ('worldFromModel', sun_position)
   sun.vao.bind()
   sun.vao.drawIndexed (gl.TRIANGLES)
@@ -152,16 +154,21 @@ function render() {
   shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
   shaderProgram.setUniform1f('shininess', 80)
   shaderProgram.setUniform1f('ambientFactor', .4)
-  for (let i = sun_index; i < interactables.length; i++) {
+  for (let i = 0; i < interactables.length; i++) {
     const interactable = interactables[i]
     interactable.vao.bind()
     for (let j = 0; j < interactable.num_objects; j++) {
+      if (i == celestial_bodies_index && j == sun_index)
+        continue
       const pos = interactable.getMatrix(j)
       // SET AS ATTRIBUTE
       shaderProgram.setUniformMatrix4('worldFromModel', pos)
       // sphere index
-      if (i == sphere_index)
+      if (i == celestial_bodies_index && j == earth_index)
         shaderProgram.setUniform1i('normTexture', 2);
+      if (i == celestial_bodies_index && j == moon_index) {
+        shaderProgram.setUniform1i('normTexture', 4);
+      }
       interactable.vao.drawIndexed(gl.TRIANGLES)
   }
   interactable.vao.unbind()
@@ -283,12 +290,15 @@ async function initialize() {
   
   // SKYBOX TEXTURE 
   await loadCubemap ("./bkg/lightblue", "png", gl.TEXTURE1)
-  // MOON TEXTURE
-  const moonImage = await readImage('./moon.png')
-  createTexture2d (moonImage, gl.TEXTURE2)
+  // earth TEXTURE
+  const earthImage = await readImage('./earthmap1k.jpg')
+  createTexture2d (earthImage, gl.TEXTURE2)
   // SUN teXTURE
   const sunImage = await readImage ('./sunmap.jpg')
   createTexture2d (sunImage, gl.TEXTURE3)
+
+  const moonImage = await readImage ('./moon.png')
+  createTexture2d (moonImage, gl.TEXTURE4)
 
   const vertexSource = `
 uniform mat4 clipFromEye;
@@ -420,8 +430,9 @@ async function initInteractables() {
   // CREATE SUN
   let offset = lightPosition
 
-  interactables.push (generateSphereObject (20, 20, 20, offset, 3))
+  interactables.push (generateSphereObject (20, 20, 20, offset, 3, 3))
   console.log (interactables)
+  celestial_bodies_index = 0
 
   let lines = await readObjFromFile(name);
   shipShader = ship_shader();
@@ -452,11 +463,17 @@ async function initInteractables() {
     interactable.setMatrix (pos, i)
   }
   interactables.push(interactable)
-  // ** NOTE ** THIS IS HORRIBLE, NEEDS REWRITE
-  // GENERATE SPHERE
-  sphere_index = interactables.length
-  interactables.push (generateSphereObject (20, 20, 20, offset, 1))
-  interactables[sphere_index].setMatrix (interactables[0].getMatrix(0), 0)
+  // SET EARTH IN PLANET TRI VAO GROUP
+  let planets = interactables[celestial_bodies_index]
+  planets.setMatrix (planets.getMatrix(sun_index).copy(), sun_index + 1)
+  earth_index = sun_index + 1
+  // GENERATE MOON
+  planets.setMatrix (planets.getMatrix(earth_index).copy(), earth_index + 1)
+  // rescale moon
+  moon_index = earth_index + 1
+  planets.getMatrix(moon_index).set (0, 0, 5)
+  planets.getMatrix(moon_index).set (1, 1, 5)
+  planets.getMatrix(moon_index).set (2, 2, 5)
   // GENERATE HITBOXES
   generateVisualHitBoxes()
 
@@ -469,15 +486,16 @@ async function initInteractables() {
  * @param {float} radius 
  * @param {vec3} offest
  * @param {bool} doTexture
+ * @param {int} num_spheres
  */
-function generateSphereObject (nlat, nlong, radius, offset, texture_index) {
+function generateSphereObject (nlat, nlong, radius, offset, texture_index, num_spheres) {
   let sphere_attributes_arr = generateSphere (nlat, nlong, radius)
   let sPos = sphere_attributes_arr[0]
   let sNor = sphere_attributes_arr[1]
   let sInd = sphere_attributes_arr[2]
   let sTex = sphere_attributes_arr[3]
   //let sphere_trivao = new TrimeshVao (sPos, sNor, sInd, null, sTex)
-  let sphere_trivao = new TrimeshVaoGrouping (sPos, sNor, sInd, null, sTex, texture_index, 1)
+  let sphere_trivao = new TrimeshVaoGrouping (sPos, sNor, sInd, null, sTex, texture_index, num_spheres)
   console.log (sphere_trivao)
   sPos = sphere_trivao.flat_positions ()
   sNor = sphere_trivao.flat_normals ()
@@ -508,6 +526,7 @@ function generateSphereObject (nlat, nlong, radius, offset, texture_index) {
     console.log ("retrying to place obj due to collision")
   }
   sphere_trivao.setMatrix (sphere_pos, 0)
+
   return sphere_trivao
 }
 
@@ -605,27 +624,40 @@ function rotateInteractables(now) {
     let force = forceOfGravity (ship_distance, 100000)
     // calculate unit vector between pointing from ship to sphere
     // B - A / | B - A |
-    let sphere = interactables[sphere_index]
-    let sphere_center = sphere.getMatrix (0).multiplyVector (sphere.centroid).xyz
+    let sphere = interactables[celestial_bodies_index]
+    let sphere_center = sphere.getMatrix (earth_index).multiplyVector (sphere.centroid).xyz
     let ship_center = objectPositions[0].multiplyVector (ship.centroid).xyz
     let gravity_direction = sphere_center.add(ship_center.inverse())
                             .normalize().scalarMultiply(force)
     camera.end_point = camera.end_point.add (gravity_direction)
   }
 
-  // MOVE MOON AROUND SUN
+  // MOVE EARTH AROUND SUN
   let radius = 2000
-  let sun = interactables[0]
+  let sun = interactables[celestial_bodies_index]
+  let new_earth_x = Math.cos (earth_theta) * radius
+  let new_earth_z = Math.sin (earth_theta) * radius
+  let earth = interactables[celestial_bodies_index]
+  let earth_position = earth.getMatrix (earth_index)
+  let sun_center = sun.getMatrix(sun_index).multiplyVector(sun.centroid)
+  // READJUST TRANSLATION
+  earth_position.set (0, 3, new_earth_x + sun_center.x)
+  earth_position.set (2, 3, new_earth_z + sun_center.z)
+  earth_theta += .001
+
+  // MOVE MOON AROUND EARTH
+  let earth_center = earth_position.multiplyVector (earth.centroid)
+  radius = 600
   let new_moon_x = Math.cos (moon_theta) * radius
   let new_moon_z = Math.sin (moon_theta) * radius
-  let moon_grouping = interactables[sphere_index]
-  let moon_position = moon_grouping.getMatrix (0)
-  let sun_center = sun.getMatrix(0).multiplyVector(sun.centroid)
-  // READJUST TRANSLATION
-  moon_position.set (0, 3, new_moon_x + sun_center.x)
-  //moon_position.set (1, 3,  sun_center.y + )
-  moon_position.set (2, 3, new_moon_z + sun_center.z)
-  moon_theta += .001
+  let new_moon_pos = new Vector3 (new_moon_x, 1, new_moon_z)
+  new_moon_pos = Matrix4.rotateZ (6.688).multiplyVector (new_moon_pos)
+  let moon_position = earth.getMatrix (moon_index)
+  moon_position.set (0, 3, new_moon_pos.x + earth_center.x)
+  moon_position.set (1, 3, new_moon_pos.y + earth_center.y)
+  moon_position.set (2, 3, new_moon_pos.z + earth_center.z)
+  moon_theta += .01
+
 
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
@@ -654,7 +686,7 @@ function rotateInteractables(now) {
         let pos = interactable.getMatrix(j)
         const centroid = interactable.centroid
         const center = new Vector3(centroid.x, 1, centroid.z)
-        pos = pos.multiplyMatrix (Matrix4.rotateAroundAxis(center, .25 * Math.random() + .25))
+        pos = pos.multiplyMatrix (Matrix4.rotateY(.1))//rotateAroundAxis(center, .25 * Math.random() + .25))
         interactable.setMatrix (pos, j)
       }
     }
@@ -678,8 +710,8 @@ function rotateInteractables(now) {
  * @returns 
  */
 function checkSphereDistance (object, o_pos) {
-  let sphere = interactables[sphere_index]
-  let s_pos = sphere.getMatrix (0)
+  let sphere = interactables[earth_index]
+  let s_pos = sphere.getMatrix (earth_index)
 
   let s_point = s_pos.multiplyVector (sphere.centroid)
   let o_point = o_pos.multiplyVector (object.centroid)
