@@ -7,7 +7,7 @@ import { Vector3, Vector4 } from './vector'
 import { Terrain } from './terrain'
 import { Trimesh, TrimeshVao, TrimeshVaoGrouping, getGroupLength } from './trimesh'
 import { Camera, SlideCamera } from './camera'
-import { bindShadowCubeFace, reserveDepthCubeTexture, initializeDepthProgram, createTexture2d} from './shadow'
+import { reserveDepthCubeTexture, initializeDepthProgram, createTexture2d, initializeDepthFbo, reserveDepthTexture} from './shadow'
 import {readBoxen, generateCube} from './box_gen'
 import { generateSkybox, loadCubemap, skybox_shader_program, ship_shader} from './skybox'
 import { Trackball } from './trackball'
@@ -39,17 +39,15 @@ let moon_index
 let earth_theta = 0
 let moon_theta = 0
 // SHADOW
-let depthTextureUnit
-let textureFromWorld
 let texturesFromWorld = []
 let fbo
 let depthProgram;
-const textDim = 256;
-let max_shadow_distance = 10000
+const textDim = 512;
+let max_shadow_distance = 5000
 let cube_shadow_map
+let depth_buffer;
 
 let lightPosition = new Vector3(1000, 1000, 1000)
-let lightTarget = new Vector3(2000, -1000, 2000);
 let lightTargets = []
 let lightWorldUps = []
 let lightCamera;
@@ -90,7 +88,7 @@ let keysPressed = {
 };
 
 // Default render function
-function render() {
+function render(k) {
   gl.viewport(0, 0, canvas.width, canvas.height)
   gl.clearColor(0.6, 0.6, 0.9, 1)
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -112,25 +110,25 @@ function render() {
   shaderProgram.bind()
 
   // Bling-Fong basic init
-  shaderProgram.setUniform3f('specularColor', specularColor[0], specularColor[1], specularColor[2])
-  shaderProgram.setUniform3f('diffuseColor', diffuseColor[0], diffuseColor[1], diffuseColor[2])
-  shaderProgram.setUniform1f('shininess', shininess)
-  shaderProgram.setUniform1f('ambientFactor', ambientFactor)
+  //shaderProgram.setUniform3f('specularColor', specularColor[0], specularColor[1], specularColor[2])
+  //shaderProgram.setUniform3f('diffuseColor', diffuseColor[0], diffuseColor[1], diffuseColor[2])
+  //shaderProgram.setUniform1f('shininess', shininess)
+  //shaderProgram.setUniform1f('ambientFactor', ambientFactor)
   shaderProgram.setUniformMatrix4('clipFromEye', clipFromEye)
   shaderProgram.setUniformMatrix4('eyeFromWorld', camera.eyeFromWorld)
   shaderProgram.setUniformMatrix4('worldFromModel', Matrix4.identity())
   shaderProgram.setUniformMatrix4("textureFromWorld", texturesFromWorld[0]);
-  shaderProgram.setUniform3fv ('lightDirection', lightTargets[0])
+  shaderProgram.setUniform3fv ('lightWorldPosition', lightPosition)
   // RESET TEXTURE
-  shaderProgram.setUniform1i('normTexture', 0);
+  //shaderProgram.setUniform1i('normTexture', 0);
   // DRAW HITBOXES IF OPTION SELECTED
   if (show_hitboxes)
   {
     gl.depthMask(false);
-    shaderProgram.setUniform3f('specularColor', .2, .4, .3)
-    shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-    shaderProgram.setUniform1f('shininess', 40)
-    shaderProgram.setUniform1f('ambientFactor', .6)
+    //shaderProgram.setUniform3f('specularColor', .2, .4, .3)
+    //shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
+    //shaderProgram.setUniform1f('shininess', 40)
+    //shaderProgram.setUniform1f('ambientFactor', .6)
     for (let i = 0; i < interactables.length; i++) {
       const interactable = interactables[i]
       for (let j = 0; j < interactable.num_objects; j++) {
@@ -146,27 +144,28 @@ function render() {
     gl.depthMask(true);
   }
 
-  shaderProgram.setUniform3f('specularColor', .99, .99, .1)
-  shaderProgram.setUniform3f('diffuseColor', .99, .99, .1)
-  shaderProgram.setUniform1f('shininess', 30)
-  shaderProgram.setUniform1f('ambientFactor', .99)
-  shaderProgram.setUniform1i('normTexture', 3);
+  //shaderProgram.setUniform3f('specularColor', .99, .99, .1)
+  //shaderProgram.setUniform3f('diffuseColor', .99, .99, .1)
+  //shaderProgram.setUniform1f('shininess', 30)
+  //shaderProgram.setUniform1f('ambientFactor', .99)
+  //shaderProgram.setUniform1i('normTexture', 3);
+  
   let sun = interactables[sun_index]
   let sun_position = sun.getMatrix (celestial_bodies_index)
   shaderProgram.setUniformMatrix4 ('worldFromModel', sun_position)
   sun.vao.bind()
   sun.vao.drawIndexed (gl.TRIANGLES)
   sun.vao.unbind()
+  
 
-  shaderProgram.setUniform3f('specularColor', .8, .9, .1)
-  shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-  shaderProgram.setUniform1f('shininess', 255)
-  shaderProgram.setUniform1f('ambientFactor', .2)
-  shaderProgram.setUniform1i("depthTexture", 5);
-
-  for (let k = 0; k < 6; k++) {
-    shaderProgram.setUniformMatrix4("textureFromWorld", texturesFromWorld[k]);
-    shaderProgram.setUniform3fv ('lightDirection', lightTargets[k])
+  //shaderProgram.setUniform3f('specularColor', .8, .9, .1)
+  //shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
+  //shaderProgram.setUniform1f('shininess', 255)
+  //shaderProgram.setUniform1f('ambientFactor', .2)
+  shaderProgram.setUniform1i("depthTexture", 0);
+  //for (let k = 0; k < 6; k++) 
+  //{
+    shaderProgram.setUniformMatrix4("textureFromWorld", texturesFromWorld[0]);
     for (let i = 0; i < interactables.length; i++) {
       const interactable = interactables[i]
       interactable.vao.bind()
@@ -178,16 +177,15 @@ function render() {
         shaderProgram.setUniformMatrix4('worldFromModel', pos)
         // sphere index
         if (i == celestial_bodies_index && j == earth_index)
-          shaderProgram.setUniform1i('normTexture', 2);
+          //shaderProgram.setUniform1i('normTexture', 2);
         if (i == celestial_bodies_index && j == moon_index) {
-          shaderProgram.setUniform1i('normTexture', 4);
+          //shaderProgram.setUniform1i('normTexture', 4);
         }
         interactable.vao.drawIndexed(gl.TRIANGLES)
       }
     interactable.vao.unbind() 
     }
-  }
-
+  //}
   shaderProgram.unbind()
   // SHIPS AS MIRRORS
     shipShader.bind()
@@ -216,7 +214,7 @@ function renderDepths(width, height, fbo) {
   gl.viewport(0, 0, width, height);
   gl.clear(gl.DEPTH_BUFFER_BIT);
 
-  const clipFromWorld = clipFromLight.multiplyMatrix(lightFromWorld);
+  const clipFromWorld = clipFromLight.multiplyMatrix(lightsFromWorld[0]);
   depthProgram.bind();
   depthProgram.setUniformMatrix4('clipFromWorld', clipFromWorld);
   for (let i = 0; i < interactables; i++) {
@@ -247,13 +245,14 @@ function renderDepths(width, height, fbo) {
 }
 
 function shadowMapPass (width, height, fbo) {
-  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
 
-  gl.viewport(0, 0, width, height);
-  gl.clear(gl.DEPTH_BUFFER_BIT);
   for (let k = 0; k < 6; k++) {
-    bindShadowCubeFace (gl.TEXTURE_CUBE_MAP_POSITIVE_X + k, fbo, cube_shadow_map)
-    const clipFromWorld = clipFromLight.multiplyMatrix(lightsFromWorld[k]);
+    gl.bindFramebuffer (gl.FRAMEBUFFER, fbo)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
+       gl.TEXTURE_2D, depth_buffer, 0);
+    gl.viewport (0,0, width, height)
+    gl.clear (gl.DEPTH_BUFFER_BIT)
+    const clipFromWorld = clipFromLight.multiplyMatrix(lightsFromWorld[5]);
     depthProgram.bind();
     depthProgram.setUniformMatrix4('clipFromWorld', clipFromWorld);
     for (let i = 0; i < interactables; i++) {
@@ -277,10 +276,12 @@ function shadowMapPass (width, height, fbo) {
       object.vao.drawIndexed(gl.TRIANGLES)
       object.vao.unbind()
     }
+    depthProgram.unbind();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    render (k)
+    
   }
 
-  depthProgram.unbind();
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
 /**
@@ -289,7 +290,7 @@ function shadowMapPass (width, height, fbo) {
 function onResizeWindow() {
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.1, 50000)
+  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.1, 10000)
 }
 
 /**
@@ -321,12 +322,11 @@ async function initialize() {
   attributes = new VertexAttributes()
 
   // SHADOW INIT
-  let val_buffer = reserveDepthCubeTexture (textDim, textDim, gl.TEXTURE0, gl.TEXTURE5) 
-  depthTextureUnit = val_buffer[0]//reserveDepthTexture (textDim, textDim, gl.TEXTURE0)
-  cube_shadow_map = val_buffer[1]
-  fbo = val_buffer[2]//initializeDepthFbo (depthTextureUnit)
+  //let val_buffer = reserveDepthCubeTexture (textDim, textDim, gl.TEXTURE0, gl.TEXTURE5) 
+  //cube_shadow_map = val_buffer[0]//reserveDepthTexture (textDim, textDim, gl.TEXTURE0)
+  depth_buffer = reserveDepthTexture (textDim, textDim, gl.TEXTURE0)//val_buffer[1]
+  fbo = (initializeDepthFbo(depth_buffer))//val_buffer[0]
   depthProgram = initializeDepthProgram()
-  getTextFromWorld()
 
 
   // PLAYER CAMERA INIT
@@ -356,66 +356,93 @@ uniform mat4 clipFromEye;
 uniform mat4 eyeFromWorld;
 uniform mat4 worldFromModel;
 uniform mat4 textureFromWorld;
-uniform vec3 lightWorldPosition;
+
 in vec3 normal;
 in vec3 position;
 in vec2 texPosition;
+
 out vec2 flat_mixTexPosition;
 out vec3 mixNormal;
 out vec3 mixPosition;
 out vec4 mixTexPosition;
 out vec4 worldPosition;
+
+out mat4 clipeye;
+out mat4 eyeworld;
+
 void main() {
-  gl_PointSize = 3.0;
   worldPosition = worldFromModel * vec4(position, 1.0);
   gl_Position = clipFromEye * eyeFromWorld * worldPosition;
-  mixNormal = (eyeFromWorld * worldFromModel * vec4(normal.x, normal.y, normal.z, 0)).xyz;
+  mixNormal = (eyeFromWorld * worldFromModel * vec4(normal, 0)).xyz;
   mixPosition =  (eyeFromWorld * worldPosition).xyz;
   mixTexPosition = textureFromWorld * worldPosition;
   flat_mixTexPosition = texPosition;
+  clipeye = clipFromEye;
+  eyeworld = eyeFromWorld;
 }
   `;
 
   const fragmentSource = `
-uniform vec3 lightDirection;
-uniform vec3 diffuseColor;
-uniform vec3 specularColor;
-uniform float shininess;
-uniform float ambientFactor;
+//uniform vec3 diffuseColor;
+//uniform vec3 specularColor;
+uniform vec3 lightWorldPosition;
 
-uniform sampler2D normTexture;
-uniform samplerCube depthTexture;
+//uniform float shininess;
+//uniform float ambientFactor;
 
+
+//uniform sampler2D normTexture;
+uniform sampler2D depthTexture;
+
+in vec2 flat_mixTexPosition;
 in vec3 mixNormal;
 in vec4 worldPosition;
 in vec3 mixPosition;
 in vec4 mixTexPosition;
-in vec2 flat_mixTexPosition;
+
+in mat4 clipeye;
+in mat4 eyeworld;
+
 out vec4 fragmentColor;
 
 void main() {
   vec3 normal = normalize(mixNormal);
+  vec4 test = eyeworld * vec4(lightWorldPosition,1);
+  vec3 lightDirection = normalize (test.xyz - mixPosition);
+  float litness = dot(normal, lightDirection);
+
   // get normal texture
-  vec4 realTexture = texture(normTexture, flat_mixTexPosition);
-  vec3 albedo = texture(normTexture, flat_mixTexPosition).rgb;
+  //vec4 realTexture = texture(normTexture, flat_mixTexPosition);
+  vec3 albedo = vec3 (0.6 ,0.7, 0.1);//texture(normTexture, flat_mixTexPosition).rgb;
   // calculate fragment depth and shadow
   vec4 texPosition = mixTexPosition / mixTexPosition.w;
-  float fragmentDepth = texPosition.z - .005;
-  float closestDepth = texture(depthTexture, lightDirection).r;
-  float shadowFactor = closestDepth < fragmentDepth ? 0.5 : 1.0;
+  float fragmentDepth = texPosition.z; //- .00005;
+  float closestDepth = texture(depthTexture, flat_mixTexPosition).r;
+  //float shadowFactor = closestDepth < fragmentDepth ? 0.5 : 1.0;
   
+  float percentage = 0.0;
+  for (int y = -1; y <= 1; y += 1) {
+    for (int x = -1; x <= 1; x += 1) {
+      vec2 offset = vec2(x, y) / 256.0;
+      vec2 neighborPosition = texPosition.xy + offset;
+      float closestDepth = texture(depthTexture, neighborPosition).r;
+      percentage += closestDepth < fragmentDepth ? 0.0 : 1.0;
+    }
+  }
+  float shadowFactor = percentage / 9.0;
+
   // specular
-  vec3 eyeDirection = normalize(-mixPosition);
-  vec3 halfDirection = normalize(eyeDirection + lightDirection);
-  float specularity = pow(max(0.0, dot(halfDirection, normal)), shininess);
-  vec3 specular = specularity * specularColor;
+  //vec3 eyeDirection = normalize(-mixPosition);
+  //vec3 halfDirection = normalize(eyeDirection + lightDirection);
+  //float specularity = pow(max(0.0, dot(halfDirection, normal)), shininess);
+  //vec3 specular = specularity * specularColor;
   // ambient
-  float litness = dot(normal, lightDirection);
-  vec3 ambient = ambientFactor * albedo * diffuseColor;
+  //float litness = dot(normal, lightDirection);
+  //vec3 ambient = ambientFactor * albedo * diffuseColor;
   // diffuse
-  vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor * shadowFactor;
-  vec3 rgb = ambient + diffuse + specular;
-  fragmentColor = realTexture * vec4(rgb, 1.0);
+  vec3 diffuse = albedo * shadowFactor * litness;//(1.0 - ambientFactor) * litness * albedo * diffuseColor * shadowFactor;
+  vec3 rgb = diffuse;//ambient + diffuse + specular;
+  fragmentColor = vec4 (vec3(diffuse), 1.0);//realTexture * vec4(rgb, 1.0);
 }
   `;
 
@@ -424,6 +451,9 @@ void main() {
 
   await initInteractables()
   await initializeObjects()
+
+  getTextFromWorld()
+
 
   window.addEventListener('resize', onResizeWindow)
   onResizeWindow()
@@ -437,11 +467,9 @@ void main() {
     if (document.pointerLockElement) {
       camera.yaw(-event.movementX * turnDelta)
       camera.pitch(-event.movementY * turnDelta)
-      render()
     }
   })
 
-  generateLightCameras ()
   onResizeWindow()
   rotateInteractables()
 }
@@ -478,7 +506,6 @@ async function initInteractables() {
   let offset = lightPosition
 
   interactables.push (generateSphereObject (20, 20, 20, offset, 3, 3))
-  console.log (interactables)
   celestial_bodies_index = 0
 
   let lines = await readObjFromFile(name);
@@ -543,7 +570,6 @@ function generateSphereObject (nlat, nlong, radius, offset, texture_index, num_s
   let sTex = sphere_attributes_arr[3]
   //let sphere_trivao = new TrimeshVao (sPos, sNor, sInd, null, sTex)
   let sphere_trivao = new TrimeshVaoGrouping (sPos, sNor, sInd, null, sTex, texture_index, num_spheres)
-  console.log (sphere_trivao)
   sPos = sphere_trivao.flat_positions ()
   sNor = sphere_trivao.flat_normals ()
   // SPHERE ATTRIBUTES
@@ -682,8 +708,8 @@ function rotateInteractables(now) {
   // MOVE EARTH AROUND SUN
   let radius = 2000
   let sun = interactables[celestial_bodies_index]
-  let new_earth_x = 2000//Math.cos (earth_theta) * radius
-  let new_earth_z = 2000 //Math.sin (earth_theta) * radius
+  let new_earth_x = Math.cos (earth_theta) * radius
+  let new_earth_z = Math.sin (earth_theta) * radius
   let earth = interactables[celestial_bodies_index]
   let earth_position = earth.getMatrix (earth_index)
   let earth_center = earth_position.multiplyVector (earth.centroid)
@@ -692,7 +718,7 @@ function rotateInteractables(now) {
   earth_position.set (0, 3, new_earth_x + sun_center.x)
   //earth_position.set (1, 3, earth_center.y + 100)
   earth_position.set (2, 3, new_earth_z + sun_center.z)
-  earth_theta += .001
+  earth_theta += .008
 
   // MOVE MOON AROUND EARTH
   radius = 600
@@ -704,7 +730,7 @@ function rotateInteractables(now) {
   moon_position.set (0, 3, new_moon_pos.x + earth_center.x)
   moon_position.set (1, 3, new_moon_pos.y + earth_center.y)
   moon_position.set (2, 3, new_moon_pos.z + earth_center.z)
-  moon_theta += .01
+  moon_theta += .08
 
 
   // OFFSETS ON SCREEN
@@ -733,7 +759,7 @@ function rotateInteractables(now) {
       for (let j = 0; j < interactable.num_objects; j++) {
         let pos = interactable.getMatrix(j)
         const centroid = interactable.centroid
-        const center = new Vector3(centroid.x, 1, centroid.z)
+        //const center = new Vector3(centroid.x, 1, centroid.z)
         pos = pos.multiplyMatrix (Matrix4.rotateY(.1))//rotateAroundAxis(center, .25 * Math.random() + .25))
         interactable.setMatrix (pos, j)
       }
@@ -744,10 +770,10 @@ function rotateInteractables(now) {
   const deltaTime = now - then;          // compute time since last frame
   then = now;                            // remember time for next frame
   const fps = 1 / deltaTime;             // compute frames per second
-  if (fps < 58)
+  if (fps < 29)
     console.log (fps)
   // RENDER AND REQUEST 2 DRAW
-  shadowMapPass(textDim, textDim, fbo)
+  renderDepths(textDim, textDim, fbo)
   render()
   requestAnimationFrame(rotateInteractables)
 }
@@ -764,6 +790,7 @@ function checkSphereDistance (object, o_pos) {
 
   let s_point = s_pos.multiplyVector (sphere.centroid)
   let o_point = o_pos.multiplyVector (object.centroid)
+  console.log ("player="+o_point.xyz)
   let distance = Math.sqrt (Math.pow(s_point.x - o_point.x, 2) 
                             + Math.pow(s_point.y - o_point.y, 2) 
                             + Math.pow(s_point.z - o_point.z, 2)) 
@@ -936,24 +963,25 @@ function onKeyUp (event) {
  */
 function generateLightCameras () {
   // x+
-  lightTargets.push (new Vector3 ( 1, 0, 0))
+  let lp = lightPosition
+  lightTargets.push (new Vector3 (1,0,0 ))//lp.x + max_shadow_distance, lp.y, lp.z))
   lightWorldUps.push (new Vector3 (0, 1, 0))
   // x-
-  lightTargets.push (new Vector3 (-1, 0, 0))
-  lightWorldUps.push (new Vector3 (0, 1, 0))
+  lightTargets.push (new Vector3 ( lp.x - max_shadow_distance, lp.y, lp.z))
+  lightWorldUps.push (new Vector3 (0, -1, 0))
 
   // y+
-  lightTargets.push (new Vector3 (0,  1, 0))
-  lightWorldUps.push (new Vector3 (0, 0, 1))
-  // y-
-  lightTargets.push (new Vector3 (0, -1, 0))
+  lightTargets.push (new Vector3 ( lp.x, lp.y + max_shadow_distance, lp.z))
   lightWorldUps.push (new Vector3 (0, 0, -1))
+  // y-
+  lightTargets.push (new Vector3 ( lp.x, lp.y - max_shadow_distance, lp.z))
+  lightWorldUps.push (new Vector3 (0, 0, 1))
 
   // z+
-  lightTargets.push (new Vector3 (0, 0,  1))
+  lightTargets.push (new Vector3 ( lp.x, lp.y, lp.z + max_shadow_distance))
   lightWorldUps.push (new Vector3 (0, 1, 0))
   // z-
-  lightTargets.push (new Vector3 (0, 0, -1))
+  lightTargets.push (new Vector3 ( lp.x, lp.y, lp.z - max_shadow_distance))
   lightWorldUps.push (new Vector3 (0, 1, 0))
 
 
@@ -965,12 +993,14 @@ function generateLightCameras () {
  */
 function getTextFromWorld () {
   generateLightCameras()
-  clipFromLight = Matrix4.fovPerspective(90, 1, 1, 10000);
+  clipFromLight = Matrix4.fovPerspective(45, 1, .1, max_shadow_distance);
   for (let i = 0; i < 6; i++) {
+    if (i > 0)
+      continue
     console.log (i)
     console.log (lightTargets[i])
     lightCamera = new Camera(lightPosition, lightTargets[i], lightWorldUps[i]);
-    lightsFromWorld.push( lightCamera.eyeFromWorld);
+    lightsFromWorld.push( camera.eyeFromWorld);
     const matrices = [
       Matrix4.translate(0.5, 0.5, 0.5),
       Matrix4.scale(0.5, 0.5, 0.5),
@@ -979,6 +1009,8 @@ function getTextFromWorld () {
     ];
     texturesFromWorld.push( matrices.reduce((accum, transform) => accum.multiplyMatrix(transform)));
   }
+  console.log (texturesFromWorld)
 }
+
 
 window.addEventListener('load', initialize)

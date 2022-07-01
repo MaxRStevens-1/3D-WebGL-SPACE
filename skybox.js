@@ -97,7 +97,6 @@ export function generateSkybox() {
     out vec3 mixTexPosition;
     
     void main() {
-      gl_Position = clipFromEye * eyeFromWorld * vec4(position, 1.0);
       gl_Position = clipFromEye * eyeFromWorld * worldFromModel * vec4(position, 1.0);
       mixTexPosition = position;
     }
