@@ -111,25 +111,25 @@ function render(k) {
   shaderProgram.bind()
 
   // Bling-Fong basic init
-  //shaderProgram.setUniform3f('specularColor', specularColor[0], specularColor[1], specularColor[2])
-  //shaderProgram.setUniform3f('diffuseColor', diffuseColor[0], diffuseColor[1], diffuseColor[2])
-  //shaderProgram.setUniform1f('shininess', shininess)
-  //shaderProgram.setUniform1f('ambientFactor', ambientFactor)
+  shaderProgram.setUniform3f('specularColor', specularColor[0], specularColor[1], specularColor[2])
+  shaderProgram.setUniform3f('diffuseColor', diffuseColor[0], diffuseColor[1], diffuseColor[2])
+  shaderProgram.setUniform1f('shininess', shininess)
+  shaderProgram.setUniform1f('ambientFactor', ambientFactor)
   shaderProgram.setUniformMatrix4('clipFromEye', clipFromEye)
   shaderProgram.setUniformMatrix4('eyeFromWorld', camera.eyeFromWorld)
   shaderProgram.setUniformMatrix4('worldFromModel', Matrix4.identity())
   shaderProgram.setUniformMatrix4("textureFromWorld", texturesFromWorld[0]);
   shaderProgram.setUniform3fv ('lightWorldPosition', lightPosition)
   // RESET TEXTURE
-  //shaderProgram.setUniform1i('normTexture', 0);
+  shaderProgram.setUniform1i('normTexture', 6);
   // DRAW HITBOXES IF OPTION SELECTED
   if (show_hitboxes)
   {
     gl.depthMask(false);
-    //shaderProgram.setUniform3f('specularColor', .2, .4, .3)
-    //shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-    //shaderProgram.setUniform1f('shininess', 40)
-    //shaderProgram.setUniform1f('ambientFactor', .6)
+    shaderProgram.setUniform3f('specularColor', .2, .4, .3)
+    shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
+    shaderProgram.setUniform1f('shininess', 40)
+    shaderProgram.setUniform1f('ambientFactor', .6)
     for (let i = 0; i < interactables.length; i++) {
       const interactable = interactables[i]
       for (let j = 0; j < interactable.num_objects; j++) {
@@ -145,11 +145,11 @@ function render(k) {
     gl.depthMask(true);
   }
 
-  //shaderProgram.setUniform3f('specularColor', .99, .99, .1)
-  //shaderProgram.setUniform3f('diffuseColor', .99, .99, .1)
-  //shaderProgram.setUniform1f('shininess', 30)
-  //shaderProgram.setUniform1f('ambientFactor', .99)
-  //shaderProgram.setUniform1i('normTexture', 3);
+  shaderProgram.setUniform3f('specularColor', .99, .99, .1)
+  shaderProgram.setUniform3f('diffuseColor', .99, .99, .1)
+  shaderProgram.setUniform1f('shininess', 30)
+  shaderProgram.setUniform1f('ambientFactor', .99)
+  shaderProgram.setUniform1i('normTexture', 3);
   
   let sun = interactables[sun_index]
   let sun_position = sun.getMatrix (celestial_bodies_index)
@@ -159,10 +159,10 @@ function render(k) {
   sun.vao.unbind()
   
 
-  //shaderProgram.setUniform3f('specularColor', .8, .9, .1)
-  //shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-  //shaderProgram.setUniform1f('shininess', 255)
-  //shaderProgram.setUniform1f('ambientFactor', .2)
+  shaderProgram.setUniform3f('specularColor', .8, .9, .1)
+  shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
+  shaderProgram.setUniform1f('shininess', 255)
+  shaderProgram.setUniform1f('ambientFactor', .2)
   shaderProgram.setUniform1i("depthTexture", 0);
   //for (let k = 0; k < 6; k++) 
   //{
@@ -178,9 +178,9 @@ function render(k) {
         shaderProgram.setUniformMatrix4('worldFromModel', pos)
         // sphere index
         if (i == celestial_bodies_index && j == earth_index)
-          //shaderProgram.setUniform1i('normTexture', 2);
+          shaderProgram.setUniform1i('normTexture', 2);
         if (i == celestial_bodies_index && j == moon_index) {
-          //shaderProgram.setUniform1i('normTexture', 4);
+          shaderProgram.setUniform1i('normTexture', 4);
         }
         interactable.vao.drawIndexed(gl.TRIANGLES)
       }
@@ -384,15 +384,15 @@ void main() {
   `;
 
   const fragmentSource = `
-//uniform vec3 diffuseColor;
-//uniform vec3 specularColor;
+uniform vec3 diffuseColor;
+uniform vec3 specularColor;
 uniform vec3 lightWorldPosition;
 
-//uniform float shininess;
-//uniform float ambientFactor;
+uniform float shininess;
+uniform float ambientFactor;
 
 
-//uniform sampler2D normTexture;
+uniform sampler2D normTexture;
 uniform sampler2D depthTexture;
 
 in vec2 flat_mixTexPosition;
@@ -413,8 +413,8 @@ void main() {
   float litness = dot(normal, lightDirection);
 
   // get normal texture
-  //vec4 realTexture = texture(normTexture, flat_mixTexPosition);
-  vec3 albedo = vec3 (0.6 ,0.7, 0.1);//texture(normTexture, flat_mixTexPosition).rgb;
+  vec4 realTexture = texture(normTexture, flat_mixTexPosition);
+  vec3 albedo = texture(normTexture, flat_mixTexPosition).rgb; //vec3 (0.6 ,0.7, 0.1);
   // calculate fragment depth and shadow
   vec4 texPosition = mixTexPosition / mixTexPosition.w;
   float fragmentDepth = texPosition.z- 0.00005;
@@ -433,17 +433,19 @@ void main() {
   float shadowFactor = percentage / 9.0;
 
   // specular
-  //vec3 eyeDirection = normalize(-mixPosition);
-  //vec3 halfDirection = normalize(eyeDirection + lightDirection);
-  //float specularity = pow(max(0.0, dot(halfDirection, normal)), shininess);
-  //vec3 specular = specularity * specularColor;
+  vec3 eyeDirection = normalize(-mixPosition);
+  vec3 halfDirection = normalize(eyeDirection + lightDirection);
+  float specularity = pow(max(0.0, dot(halfDirection, normal)), shininess);
+  vec3 specular = specularity * specularColor;
   // ambient
-  //float litness = dot(normal, lightDirection);
-  //vec3 ambient = ambientFactor * albedo * diffuseColor;
+  vec3 ambient = ambientFactor * albedo * diffuseColor;
   // diffuse
-  vec3 diffuse = albedo * shadowFactor * litness;//(1.0 - ambientFactor) * litness * albedo * diffuseColor * shadowFactor;
-  vec3 rgb = diffuse;//ambient + diffuse + specular;
-  fragmentColor = vec4 (vec3(diffuse), 1.0);//realTexture * vec4(rgb, 1.0);
+  vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor * shadowFactor;
+    //albedo * shadowFactor * litness;//
+  //vec3 rgb = diffuse;//ambient + diffuse + specular;
+  
+  vec3 rgb = ambient + diffuse + specular;
+  fragmentColor = realTexture * vec4(rgb, 1.0); //vec4 (diffuse, 1.0);
 }
   `;
 
@@ -710,8 +712,8 @@ function rotateInteractables(now) {
   // MOVE EARTH AROUND SUN
   let radius = 4000
   let sun = interactables[celestial_bodies_index]
-  let new_earth_x = Math.cos (earth_theta) * radius
-  let new_earth_z = Math.sin (earth_theta) * radius
+  let new_earth_x = 3000//Math.cos (earth_theta) * radius
+  let new_earth_z = 3000//Math.sin (earth_theta) * radius
   let earth = interactables[celestial_bodies_index]
   let earth_position = earth.getMatrix (earth_index)
   let earth_center = earth_position.multiplyVector (earth.centroid)
@@ -723,7 +725,6 @@ function rotateInteractables(now) {
   earth_theta += .001
 
   lightTarget = earth.getMatrix (earth_index).multiplyVector (earth.centroid).xyz
-  console.log ("light="+lightTarget)
   // MOVE MOON AROUND EARTH
   radius = -600
   let new_moon_x = Math.cos (moon_theta) * radius

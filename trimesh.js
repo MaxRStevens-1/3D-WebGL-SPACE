@@ -264,7 +264,10 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     this.num_objects = num_objects
     this.toWorldFromModels = []
     this.bounding_box = null
-
+    // all Vec3s o
+    this.translations = []
+    this.rotations = []
+    this.scales = []
   }
 
   //sets mat4 at index
@@ -274,6 +277,34 @@ export class TrimeshVaoGrouping extends TrimeshVao {
   // gets mat4 at index
   getMatrix (index) {
     return this.toWorldFromModels[index]
+  }
+
+  setTranslation (index, translation) {
+    this.translation[index] = translation
+  }
+
+  setRotation (index, rotation) {
+    this.rotations[index] = rotation
+  }
+
+  setScale (index, scale) {
+    this.scales[index] = scale
+  }
+  
+  // builds position matrix from transformations, rotations, and scales
+  buildMatrix (index) {
+    let translation = this.translations[index]
+    let rotation = this.rotations[index]
+    let scale = this.scales[index]
+
+    let scaleM = Matrix4.scalev(scale)
+    let rotationM = Matrix4.rotateX (rotation.x)
+      .multplyMatrix (Matrix4.rotateY (rotation.y))
+      .multplyMatrix (Matrix4.rotateZ (rotation.z))
+    let translationM = Matrix4.translate (translation.x, 
+      translation.y, translation.z)
+    
+    return scaleM.multplyMatrix (rotationM).multplyMatrix (translationM)
   }
 
   setBoundingBox (bounding_box) {
