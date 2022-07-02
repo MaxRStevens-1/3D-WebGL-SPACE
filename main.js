@@ -42,7 +42,7 @@ let moon_theta = 0
 let texturesFromWorld = []
 let fbo
 let depthProgram;
-const textDim = 512;
+const textDim = 256;
 let max_shadow_distance = 5000
 let cube_shadow_map
 let depth_buffer;
@@ -50,6 +50,7 @@ let depth_buffer;
 let lightPosition = new Vector3(1000, 1000, 1000)
 let lightTargets = []
 let lightWorldUps = []
+let lightTarget
 let lightCamera;
 let lightFromWorld;
 let lightsFromWorld = []
@@ -220,8 +221,8 @@ function renderDepths(width, height, fbo) {
   for (let i = 0; i < interactables; i++) {
     const interactable = interactables[i]
     for (let j = 0; j < interactable.num_objects; j++) {
-      if (i == celestial_bodies_index && j == sun_index)
-        continue
+      //if (i == celestial_bodies_index && j == sun_index)
+        //continue
       const pos = interactable.getMatrix (j)
       depthProgram.setUniformMatrix4('worldFromModel', pos)
       interactable.vao.bind()
@@ -416,8 +417,8 @@ void main() {
   vec3 albedo = vec3 (0.6 ,0.7, 0.1);//texture(normTexture, flat_mixTexPosition).rgb;
   // calculate fragment depth and shadow
   vec4 texPosition = mixTexPosition / mixTexPosition.w;
-  float fragmentDepth = texPosition.z; //- .00005;
-  float closestDepth = texture(depthTexture, flat_mixTexPosition).r;
+  float fragmentDepth = texPosition.z- 0.00005;
+  float closestDepth = texture(depthTexture, texPosition.xy).r;
   //float shadowFactor = closestDepth < fragmentDepth ? 0.5 : 1.0;
   
   float percentage = 0.0;
@@ -452,7 +453,7 @@ void main() {
   await initInteractables()
   await initializeObjects()
 
-  getTextFromWorld()
+  //getTextFromWorld()
 
 
   window.addEventListener('resize', onResizeWindow)
@@ -506,6 +507,7 @@ async function initInteractables() {
   let offset = lightPosition
 
   interactables.push (generateSphereObject (20, 20, 20, offset, 3, 3))
+  lightPosition = interactables[0].getMatrix(0).multiplyVector (interactables[0].centroid).xyz
   celestial_bodies_index = 0
 
   let lines = await readObjFromFile(name);
@@ -706,7 +708,7 @@ function rotateInteractables(now) {
   }
 
   // MOVE EARTH AROUND SUN
-  let radius = 2000
+  let radius = 4000
   let sun = interactables[celestial_bodies_index]
   let new_earth_x = Math.cos (earth_theta) * radius
   let new_earth_z = Math.sin (earth_theta) * radius
@@ -718,10 +720,12 @@ function rotateInteractables(now) {
   earth_position.set (0, 3, new_earth_x + sun_center.x)
   //earth_position.set (1, 3, earth_center.y + 100)
   earth_position.set (2, 3, new_earth_z + sun_center.z)
-  earth_theta += .008
+  earth_theta += .001
 
+  lightTarget = earth.getMatrix (earth_index).multiplyVector (earth.centroid).xyz
+  console.log ("light="+lightTarget)
   // MOVE MOON AROUND EARTH
-  radius = 600
+  radius = -600
   let new_moon_x = Math.cos (moon_theta) * radius
   let new_moon_z = Math.sin (moon_theta) * radius
   let new_moon_pos = new Vector3 (new_moon_x, 1, new_moon_z)
@@ -730,7 +734,7 @@ function rotateInteractables(now) {
   moon_position.set (0, 3, new_moon_pos.x + earth_center.x)
   moon_position.set (1, 3, new_moon_pos.y + earth_center.y)
   moon_position.set (2, 3, new_moon_pos.z + earth_center.z)
-  moon_theta += .08
+  moon_theta += .01
 
 
   // OFFSETS ON SCREEN
@@ -773,6 +777,7 @@ function rotateInteractables(now) {
   if (fps < 29)
     console.log (fps)
   // RENDER AND REQUEST 2 DRAW
+  getTextFromWorld ()
   renderDepths(textDim, textDim, fbo)
   render()
   requestAnimationFrame(rotateInteractables)
@@ -790,7 +795,6 @@ function checkSphereDistance (object, o_pos) {
 
   let s_point = s_pos.multiplyVector (sphere.centroid)
   let o_point = o_pos.multiplyVector (object.centroid)
-  console.log ("player="+o_point.xyz)
   let distance = Math.sqrt (Math.pow(s_point.x - o_point.x, 2) 
                             + Math.pow(s_point.y - o_point.y, 2) 
                             + Math.pow(s_point.z - o_point.z, 2)) 
@@ -936,7 +940,8 @@ function onKeyDown(event) {
   } if (event.key == ' ') {
     camera.advance (40)
     camera.end_point = camera.position
-  }
+  } if (event.key == 'l')
+    console.log ("playerpos=" +camera.position)
 }
 /**
  * Removes keypressed if key is pushed up
@@ -964,7 +969,7 @@ function onKeyUp (event) {
 function generateLightCameras () {
   // x+
   let lp = lightPosition
-  lightTargets.push (new Vector3 (1,0,0 ))//lp.x + max_shadow_distance, lp.y, lp.z))
+  lightTargets.push (new Vector3 (lp.x + max_shadow_distance, lp.y, lp.z))
   lightWorldUps.push (new Vector3 (0, 1, 0))
   // x-
   lightTargets.push (new Vector3 ( lp.x - max_shadow_distance, lp.y, lp.z))
@@ -992,24 +997,28 @@ function generateLightCameras () {
  * Shadows init
  */
 function getTextFromWorld () {
-  generateLightCameras()
-  clipFromLight = Matrix4.fovPerspective(45, 1, .1, max_shadow_distance);
+  //generateLightCameras()
+  clipFromLight = Matrix4.fovPerspective(90, 1, .1, max_shadow_distance);
   for (let i = 0; i < 6; i++) {
     if (i > 0)
       continue
-    console.log (i)
-    console.log (lightTargets[i])
-    lightCamera = new Camera(lightPosition, lightTargets[i], lightWorldUps[i]);
-    lightsFromWorld.push( camera.eyeFromWorld);
+    lightCamera = new Camera(lightPosition, lightTarget, new Vector3 (0,1,0))//lightTargets[i], lightWorldUps[i]);
+    if (lightsFromWorld.length == 0)
+      lightsFromWorld.push( lightCamera.eyeFromWorld);
+    else
+      lightsFromWorld[0] = lightCamera.eyeFromWorld
     const matrices = [
       Matrix4.translate(0.5, 0.5, 0.5),
       Matrix4.scale(0.5, 0.5, 0.5),
       clipFromLight,
-      lightsFromWorld[i],
+      lightsFromWorld[0],
     ];
-    texturesFromWorld.push( matrices.reduce((accum, transform) => accum.multiplyMatrix(transform)));
+    if (texturesFromWorld.length == 0)
+      texturesFromWorld.push( matrices.reduce((accum, transform) => accum.multiplyMatrix(transform)));
+    else
+      texturesFromWorld[0] = matrices.reduce((accum, transform) => accum.multiplyMatrix(transform));
+
   }
-  console.log (texturesFromWorld)
 }
 
 
