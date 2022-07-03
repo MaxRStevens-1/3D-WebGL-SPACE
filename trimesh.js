@@ -1,4 +1,5 @@
 import { Vector3 } from './vector'
+import {Matrix4} from './matrix'
 
 // REQURES VEC3s INTERANLLY TO FUNCTION
 export class Trimesh {
@@ -268,6 +269,13 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     this.translations = []
     this.rotations = []
     this.scales = []
+    for (let i = 0; i < num_objects; i++)
+    {
+      this.translations.push (new Vector3 (0,0,0))
+      this.rotations.push (new Vector3 (0,0,0))
+      this.scales.push (new Vector3 (0,0,0))
+
+    }
   }
 
   //sets mat4 at index
@@ -279,18 +287,80 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     return this.toWorldFromModels[index]
   }
 
-  setTranslation (index, translation) {
-    this.translation[index] = translation
+  setTranslation (index, new_translation) {
+    this.translations[index] = new_translation
   }
 
+  /**
+   * Vector three with xyz contaning degree of rotation along that 
+   * axis
+   * @param {*} index 
+   * @param {Vec3} rotation 
+   */
   setRotation (index, rotation) {
     this.rotations[index] = rotation
+  }
+
+  /**
+   * sets rotation along x ais
+   * @param {*} index 
+   * @param {*} degree 
+   */
+  setRotationX (index, degree) {
+    this.rotations[index].set (0, degree)
+  }
+
+  /**
+   * adds degree to rotation x
+   * @param {*} index 
+   * @param {*} degree 
+   */
+  addToRotationX (index, degree) {
+    this.rotations[index].set (0, degree +
+      this.rotations[index].x)
+  }
+
+  /**
+   * sets rotation along x ais
+   * @param {*} index 
+   * @param {*} degree 
+   */
+   setRotationY (index, degree) {
+    this.rotations[index].set (1, degree)
+  }
+
+  /**
+   * adds degree to rotation x
+   * @param {*} index 
+   * @param {*} degree 
+   */
+  addToRotationY (index, degree) {
+    this.rotations[index].set (1, degree + this.rotations[index].y)
+  }
+
+  /**
+ * sets rotation along x ais
+ * @param {*} index 
+ * @param {*} degree 
+ */
+  setRotationZ (index, degree) {
+    this.rotations[index].set (2, degree)
+  }
+
+  /**
+   * adds degree to rotation x
+   * @param {*} index 
+   * @param {*} degree 
+   */
+  addToRotationZ (index, degree) {
+    this.rotations[index].set (2, degree +
+      this.rotations[index].z)
   }
 
   setScale (index, scale) {
     this.scales[index] = scale
   }
-  
+
   // builds position matrix from transformations, rotations, and scales
   buildMatrix (index) {
     let translation = this.translations[index]
@@ -298,13 +368,18 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     let scale = this.scales[index]
 
     let scaleM = Matrix4.scalev(scale)
-    let rotationM = Matrix4.rotateX (rotation.x)
-      .multplyMatrix (Matrix4.rotateY (rotation.y))
-      .multplyMatrix (Matrix4.rotateZ (rotation.z))
+    let rotationM = Matrix4.identity()
+    if (rotation.x != 0)
+      rotationM = rotationM.multiplyMatrix (Matrix4.rotateX(rotation.x))
+    if (rotation.y != 0)
+      rotationM = rotationM.multiplyMatrix (Matrix4.rotateY(rotation.y))
+    if (rotation.z != 0)
+      rotationM = rotationM.multiplyMatrix (Matrix4.rotateZ(rotation.z))
+
     let translationM = Matrix4.translate (translation.x, 
       translation.y, translation.z)
     
-    return scaleM.multplyMatrix (rotationM).multplyMatrix (translationM)
+    return translationM.multiplyMatrix(scaleM).multiplyMatrix (rotationM)
   }
 
   setBoundingBox (bounding_box) {

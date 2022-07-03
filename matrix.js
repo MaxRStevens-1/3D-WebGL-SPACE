@@ -43,6 +43,14 @@ export class Matrix4 {
     scaledMatrix.set(2, 2, z)
     return scaledMatrix
   }
+  static scalev (scale) {
+    // returns scaled by x,y,z matrix
+    const scaledMatrix = Matrix4.identity()
+    scaledMatrix.set(0, 0, scale.x)
+    scaledMatrix.set(1, 1, scale.y)
+    scaledMatrix.set(2, 2, scale.z)
+    return scaledMatrix
+  }
 
   static translate(x, y, z) {
     // returns translated by x,y,z matrix

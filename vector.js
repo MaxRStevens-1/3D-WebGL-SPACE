@@ -76,6 +76,11 @@ export class Vector3 {
     result.set (3, 1)
     return result
   }
+
+  set(index, value) {
+    this.coordinates[index] = value
+  }
+
   inverse() {
     return new Vector3(
       -this.coordinates[0],
