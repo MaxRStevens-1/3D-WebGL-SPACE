@@ -249,14 +249,14 @@ export class TrimeshVaoGrouping extends TrimeshVao {
 
   /**
    * 
-   * @param {*} positions vec3 positions
-   * @param {*} normals vec3 norms
-   * @param {*} indices vec3 indicies
-   * @param {*} vao vao of obj grouping
-   * @param {*} textures texels of obj
-   * @param {*} texture_index texture index of obj
-   * @param {*} num_objects # of objects in grouping
-   * @param {*} toWorldFromModels worldFromModel mat4s
+   * @param {vec3[]} positions vec3 positions
+   * @param {vec3[]} normals vec3 norms
+   * @param {int[]} indices vec3 indicies
+   * @param {vao} vao vao of obj grouping
+   * @param {vec3[]} textures texels of obj
+   * @param {int} texture_index texture index of obj
+   * @param {int} num_objects # of objects in grouping
+   * @param {mat4} toWorldFromModels worldFromModel mat4s
    */
   constructor (positions, normals, indices, vao, textures, texture_index, num_objects) 
   {

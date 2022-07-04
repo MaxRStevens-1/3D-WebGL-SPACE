@@ -35,15 +35,21 @@ let shipShader
 // SPHERE
 let earth_index
 let moon_index
+let mecury_index
+let venus_index
+let mars_index
 // is theta used to calc earth position in rotation around sun
 let earth_theta = 0
 let moon_theta = 0
+let mecury_theta = 0
+let venus_theta = 0
+let mars_theta = 0
 // SHADOW
 let texturesFromWorld = []
 let fbo
 let depthProgram;
 const textDim = 256;
-let max_shadow_distance = 5000
+let max_shadow_distance = 50000
 let cube_shadow_map
 let depth_buffer;
 
@@ -182,6 +188,14 @@ function render(k) {
         if (i == celestial_bodies_index && j == moon_index) {
           shaderProgram.setUniform1i('normTexture', 4);
         }
+        if (i == celestial_bodies_index && j == mecury_index)
+          shaderProgram.setUniform1i ('normTexture', 5)
+
+        if (i == celestial_bodies_index && j == venus_index)
+          shaderProgram.setUniform1i ('normTexture', 6)
+
+        if (i == celestial_bodies_index && j == mars_index)
+          shaderProgram.setUniform1i ('normTexture', 7) 
         interactable.vao.drawIndexed(gl.TRIANGLES)
       }
     interactable.vao.unbind() 
@@ -291,7 +305,7 @@ function shadowMapPass (width, height, fbo) {
 function onResizeWindow() {
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.1, 10000)
+  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.1, 50000)
 }
 
 /**
@@ -352,6 +366,16 @@ async function initialize() {
 
   const moonImage = await readImage ('./moon.png')
   createTexture2d (moonImage, gl.TEXTURE4)
+
+  const mercImage = await readImage ('mercurymap.jpg')
+  createTexture2d (mercImage, gl.TEXTURE5)
+  
+  const venusImage = await readImage ('venusmap.jpg')
+  createTexture2d (venusImage, gl.TEXTURE6)
+
+  const marsImage = await readImage ('mars_1k_color.jpg')
+  createTexture2d (marsImage, gl.TEXTURE7)
+
   const vertexSource = `
 uniform mat4 clipFromEye;
 uniform mat4 eyeFromWorld;
@@ -508,7 +532,7 @@ async function initInteractables() {
   // CREATE SUN
   let offset = lightPosition
   celestial_bodies_index = 0
-  let spheres = generateSphereObject (20, 20, 20, offset, 3, 3)
+  let spheres = generateSphereObject (20, 20, 20, offset, 3, 6)
   spheres.setTranslation (sun_index, offset)
   spheres.setScale (sun_index, new Vector3 (109.29,109.29,109.29))
   interactables.push (spheres)
@@ -552,6 +576,20 @@ async function initInteractables() {
   planets.setScale (moon_index, new Vector3 (.2727,.2727,.2727))
   planets.setTranslation (moon_index, offset)
   planets.setRotationZ (moon_index, 6.688)
+  // GENERATE MECURY
+  mecury_index = moon_index + 1
+  planets.setScale (mecury_index, new Vector3 (.383, .383, .383))
+  planets.setTranslation (mecury_index, offset)
+  // GENERATE VENUS
+  venus_index = mecury_index + 1
+  planets.setScale (venus_index, new Vector3 (.95, .95, .95))
+  planets.setTranslation (venus_index, offset)
+  planets.setRotationZ (venus_index, 2.64)
+  // GENERATE MARS
+  mars_index = venus_index + 1
+  planets.setScale (mars_index, new Vector3 (.532, .532, .532))
+  planets.setTranslation (mars_index, offset)
+  planets.setRotationZ (mars_index, 25.19)
   // GENERATE HITBOXES
   generateVisualHitBoxes()
 
@@ -695,18 +733,15 @@ function rotateInteractables(now) {
   }
 
   // MOVE EARTH AROUND SUN
-  let radius = 4000
+  let radius = 23872
   let sun = interactables[celestial_bodies_index]
-  let new_earth_x = 4000//Math.cos (earth_theta) * radius
-  let new_earth_z = 4000//Math.sin (earth_theta) * radius
+  let new_earth_x = Math.cos (earth_theta) * radius
+  let new_earth_z = Math.sin (earth_theta) * radius
   let earth = interactables[celestial_bodies_index]
   let earth_position = earth.buildMatrix (earth_index)
   let earth_center = earth_position.multiplyVector (earth.centroid)
-  let sun_center = sun.buildMatrix(sun_index).multiplyVector(sun.centroid)
+  let sun_center = sun.buildMatrix(sun_index).multiplyVector(sun.centroid).xyz
   // READJUST TRANSLATION
-  //earth_position.set (0, 3, new_earth_x + sun_center.x)
-  //earth_position.set (1, 3, earth_center.y + 100)
-  //earth_position.set (2, 3, new_earth_z + sun_center.z)
   earth.setTranslation (earth_index, new Vector3 (new_earth_x + sun_center.x,
      sun_center.y, new_earth_z + sun_center.z))
   earth_theta += .001
@@ -715,18 +750,43 @@ function rotateInteractables(now) {
 
   lightTarget = earth_position.multiplyVector (earth.centroid).xyz
   // MOVE MOON AROUND EARTH
-  radius = 356.38
+  radius = 356
   let new_moon_x = Math.cos (moon_theta) * radius
   let new_moon_z = Math.sin (moon_theta) * radius
   let new_moon_pos = new Vector3 (new_moon_x, 1, new_moon_z)
   new_moon_pos = Matrix4.rotateZ (6.688).multiplyVector (new_moon_pos)
-  //moon_position.set (0, 3, new_moon_pos.x + earth_center.x)
-  //moon_position.set (1, 3, new_moon_pos.y + earth_center.y)
-  //moon_position.set (2, 3, new_moon_pos.z + earth_center.z)
   earth.setTranslation (moon_index, 
     new Vector3(new_moon_pos.x + earth_center.x, new_moon_pos.y + earth_center.y,
       new_moon_pos.z + earth_center.z))
   moon_theta += .01
+
+  // MOVE MECURY AROUND SUN
+  radius = 9093
+  let new_merc_x = Math.cos (mecury_theta) * radius
+  let new_merc_z = Math.sin (mecury_theta) * radius
+  let new_merc_pos = new Vector3 (new_merc_x, 0, new_merc_z)
+  new_merc_pos = new_merc_pos.add (sun_center)
+  earth.setTranslation (mecury_index, new_merc_pos)
+  mecury_theta += .001
+
+  // MOVE VENUS AROUND SUN
+  radius = 17003
+  let new_venus_x = Math.cos (venus_theta) * radius
+  let new_venus_z = Math.sin (venus_theta) * radius
+  let new_venus_pos = new Vector3 (new_venus_x, 0, new_venus_z)
+  new_venus_pos = new_venus_pos.add (sun_center)
+  earth.setTranslation (venus_index, new_venus_pos)
+  venus_theta += .001
+
+  // MOVE MARS AROUND SUN
+  radius = 32657
+  let new_mars_x = Math.cos (mars_theta) * radius
+  let new_mars_z = Math.sin (mars_theta) * radius
+  let new_mars_pos = new Vector3 (new_mars_x, 0, new_mars_z)
+  new_mars_pos = new_mars_pos.add (sun_center)
+  earth.setTranslation (mars_index, new_mars_pos)
+  mars_theta += .001
+
 
 
   // OFFSETS ON SCREEN
@@ -930,6 +990,26 @@ function onKeyDown(event) {
     camera.end_point = camera.position
   } if (event.key == 'l')
     console.log ("playerpos=" +camera.position)
+  // teleports to planets with # key, corresponding to planet position 2 sun
+  if (event.key == '3') {
+    let planets = interactables[celestial_bodies_index]
+    camera.position = planets.buildMatrix(earth_index).multiplyVector (planets.centroid).xyz
+    camera.end_point = camera.position
+  } if (event.key == '1') {
+    let planets = interactables[celestial_bodies_index]
+    camera.position = planets.buildMatrix(mecury_index).multiplyVector (planets.centroid).xyz
+    camera.end_point = camera.position
+  }
+  if (event.key == '2') {
+    let planets = interactables[celestial_bodies_index]
+    camera.position = planets.buildMatrix(venus_index).multiplyVector (planets.centroid).xyz
+    camera.end_point = camera.position
+  }
+  if (event.key == '4') {
+    let planets = interactables[celestial_bodies_index]
+    camera.position = planets.buildMatrix(mars_index).multiplyVector (planets.centroid).xyz
+    camera.end_point = camera.position
+  }
 }
 /**
  * Removes keypressed if key is pushed up
