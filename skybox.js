@@ -60,7 +60,7 @@ export function generateSkybox() {
     //const faces = ['posx', 'negx', 'posy', 'negy', 'posz', 'negz'];
     //const faces = ['bkg1_right', 'bkg1_left', 'bkg1_top', 
     //              'bkg1_bot', 'bkg1_front', 'bkg1_back'];
-    const faces = ['right', 'left', 'top', 'bot', 'front', 'back']
+    const faces = ['px', 'nx', 'py', 'ny', 'pz', 'nz']
   
     const images = await Promise.all(faces.map(face => {
       const url = `${directoryUrl}/${face}.${extension}`;

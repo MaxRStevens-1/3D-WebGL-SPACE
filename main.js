@@ -356,7 +356,7 @@ async function initialize() {
   skyboxVao = new VertexArray (skyboxShaderProgram, skyboxAttributes)
   
   // SKYBOX TEXTURE 
-  await loadCubemap ("./bkg/lightblue", "png", gl.TEXTURE1)
+  await loadCubemap ("./bkg/solarsystem", "png", gl.TEXTURE1)
   // earth TEXTURE
   const earthImage = await readImage('./earthmap1k.jpg')
   createTexture2d (earthImage, gl.TEXTURE2)
