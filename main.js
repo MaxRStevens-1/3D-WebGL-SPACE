@@ -19,7 +19,7 @@ let shaderProgram
 let vao
 let clipFromEye
 let camera
-let moveDelta = 5
+let moveDelta = 20
 let turnDelta = 1
 let then = 0
 
@@ -38,18 +38,26 @@ let moon_index
 let mecury_index
 let venus_index
 let mars_index
+let juipter_index
+let saturn_index 
+let uranus_index 
+let neptune_index 
 // is theta used to calc earth position in rotation around sun
 let earth_theta = 0
 let moon_theta = 0
 let mecury_theta = 0
 let venus_theta = 0
 let mars_theta = 0
+let juipter_theta = 0
+let saturn_theta = 0
+let uranus_theta = 0
+let neptune_theta = 0
 // SHADOW
 let texturesFromWorld = []
 let fbo
 let depthProgram;
 const textDim = 256;
-let max_shadow_distance = 50000
+let max_shadow_distance = 200000
 let cube_shadow_map
 let depth_buffer;
 
@@ -179,6 +187,8 @@ function render(k) {
       for (let j = 0; j < interactable.num_objects; j++) {
         if (i == celestial_bodies_index && j == sun_index)
           continue
+        if (i == 1)
+          continue
         const pos = interactable.buildMatrix(j)//.getMatrix(j)
         // SET AS ATTRIBUTE
         shaderProgram.setUniformMatrix4('worldFromModel', pos)
@@ -196,6 +206,14 @@ function render(k) {
 
         if (i == celestial_bodies_index && j == mars_index)
           shaderProgram.setUniform1i ('normTexture', 7) 
+        if (i == celestial_bodies_index && j == juipter_index)
+          shaderProgram.setUniform1i ('normTexture', 8)
+        if (i == celestial_bodies_index && j == saturn_index)
+          shaderProgram.setUniform1i ('normTexture', 9)
+        if (i == celestial_bodies_index && j == uranus_index)
+          shaderProgram.setUniform1i ('normTexture', 10)
+        if (i == celestial_bodies_index && j == neptune_index)
+          shaderProgram.setUniform1i ('normTexture', 11)
         interactable.vao.drawIndexed(gl.TRIANGLES)
       }
     interactable.vao.unbind() 
@@ -305,7 +323,7 @@ function shadowMapPass (width, height, fbo) {
 function onResizeWindow() {
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.1, 50000)
+  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.1, 1000000)
 }
 
 /**
@@ -376,6 +394,15 @@ async function initialize() {
   const marsImage = await readImage ('mars_1k_color.jpg')
   createTexture2d (marsImage, gl.TEXTURE7)
 
+  const jupImage = await readImage ('jupitermap.jpg')
+  createTexture2d (jupImage, gl.TEXTURE8)
+  const satImage = await readImage ('saturnmap.jpg')
+  createTexture2d (satImage, gl.TEXTURE9)
+  const uraImage = await readImage ('uranusmap.jpg')
+  createTexture2d (uraImage, gl.TEXTURE10)
+  const nepImage = await readImage ('neptunemap.jpg')
+  createTexture2d (nepImage, gl.TEXTURE11)
+
   const vertexSource = `
 uniform mat4 clipFromEye;
 uniform mat4 eyeFromWorld;
@@ -441,7 +468,7 @@ void main() {
   vec3 albedo = texture(normTexture, flat_mixTexPosition).rgb; //vec3 (0.6 ,0.7, 0.1);
   // calculate fragment depth and shadow
   vec4 texPosition = mixTexPosition / mixTexPosition.w;
-  float fragmentDepth = texPosition.z- 0.00005;
+  float fragmentDepth = texPosition.z - 0.0005;
   float closestDepth = texture(depthTexture, texPosition.xy).r;
   //float shadowFactor = closestDepth < fragmentDepth ? 0.5 : 1.0;
   
@@ -464,7 +491,7 @@ void main() {
   // ambient
   vec3 ambient = ambientFactor * albedo * diffuseColor;
   // diffuse
-  vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor * shadowFactor;
+  vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor; //* shadowFactor;
     //albedo * shadowFactor * litness;//
   //vec3 rgb = diffuse;//ambient + diffuse + specular;
   
@@ -532,7 +559,7 @@ async function initInteractables() {
   // CREATE SUN
   let offset = lightPosition
   celestial_bodies_index = 0
-  let spheres = generateSphereObject (20, 20, 20, offset, 3, 6)
+  let spheres = generateSphereObject (20, 20, 20, offset, 3, 10)
   spheres.setTranslation (sun_index, offset)
   spheres.setScale (sun_index, new Vector3 (109.29,109.29,109.29))
   interactables.push (spheres)
@@ -590,6 +617,26 @@ async function initInteractables() {
   planets.setScale (mars_index, new Vector3 (.532, .532, .532))
   planets.setTranslation (mars_index, offset)
   planets.setRotationZ (mars_index, 25.19)
+  // GENERATE JUIPTER
+  juipter_index = mars_index + 1
+  planets.setScale (juipter_index, new Vector3 (10.97, 10.97, 10.97))
+  planets.setTranslation (juipter_index, offset)
+  planets.setRotationZ (juipter_index, 3.13)
+  // GENERATE SATURN
+  saturn_index = juipter_index + 1
+  planets.setScale (saturn_index, new Vector3 (9.1, 9.1, 9.1))
+  planets.setTranslation (saturn_index, offset)
+  planets.setRotationZ (saturn_index, 26.73)
+  // GENERATE  URANUS
+  uranus_index = saturn_index + 1
+  planets.setScale (uranus_index, new Vector3 (3.98, 3.98, 3.98))
+  planets.setTranslation (uranus_index, offset)
+  planets.setRotationZ (uranus_index, 82.23)
+  // GENERATE NEPTUNE
+  neptune_index = uranus_index + 1
+  planets.setScale (neptune_index, new Vector3 (3.86, 3.86, 3.86))
+  planets.setTranslation (neptune_index, offset)
+  planets.setRotationZ (neptune_index, 28.32)
   // GENERATE HITBOXES
   generateVisualHitBoxes()
 
@@ -744,7 +791,7 @@ function rotateInteractables(now) {
   // READJUST TRANSLATION
   earth.setTranslation (earth_index, new Vector3 (new_earth_x + sun_center.x,
      sun_center.y, new_earth_z + sun_center.z))
-  earth_theta += .001
+  //earth_theta += .001
   
   earth_position = earth.buildMatrix (earth_index)
 
@@ -767,7 +814,7 @@ function rotateInteractables(now) {
   let new_merc_pos = new Vector3 (new_merc_x, 0, new_merc_z)
   new_merc_pos = new_merc_pos.add (sun_center)
   earth.setTranslation (mecury_index, new_merc_pos)
-  mecury_theta += .001
+  //mecury_theta += .001
 
   // MOVE VENUS AROUND SUN
   radius = 17003
@@ -776,7 +823,7 @@ function rotateInteractables(now) {
   let new_venus_pos = new Vector3 (new_venus_x, 0, new_venus_z)
   new_venus_pos = new_venus_pos.add (sun_center)
   earth.setTranslation (venus_index, new_venus_pos)
-  venus_theta += .001
+  //venus_theta += .001
 
   // MOVE MARS AROUND SUN
   radius = 32657
@@ -785,10 +832,41 @@ function rotateInteractables(now) {
   let new_mars_pos = new Vector3 (new_mars_x, 0, new_mars_z)
   new_mars_pos = new_mars_pos.add (sun_center)
   earth.setTranslation (mars_index, new_mars_pos)
-  mars_theta += .001
+  //mars_theta += .001
 
-
-
+  // MOVE JUIPTER AROUND EARTH
+  radius = 116549
+  let new_jup_x = Math.cos (juipter_theta) * radius
+  let new_jup_z = Math.sin (juipter_theta) * radius
+  let new_jup_pos = new Vector3 (new_jup_x, 0, new_jup_z)
+  new_jup_pos = new_jup_pos.add (sun_center)
+  earth.setTranslation (juipter_index, new_jup_pos)
+  //juipter_theta += .001
+  
+  // MOVE SATURN AROUND EARTH
+  radius = 231608
+  let new_sat_x = Math.cos (saturn_theta) * radius
+  let new_sat_z = Math.sin (saturn_theta) * radius
+  let new_sat_pos = new Vector3 (new_sat_x, 0, new_sat_z)
+  new_sat_pos = new_sat_pos.add (sun_center)
+  earth.setTranslation (saturn_index, new_sat_pos)
+  //saturn_theta += .001
+  // MOVE URANUS AROUND EARTH
+  radius = 462338
+  let new_ura_x = Math.cos (uranus_theta) * radius
+  let new_ura_z = Math.sin (uranus_theta) * radius
+  let new_ura_pos = new Vector3 (new_ura_x, 0, new_ura_z)
+  new_ura_pos = new_ura_pos.add (sun_center)
+  earth.setTranslation (uranus_index, new_ura_pos)
+  //uranus_theta += .001
+  // MOVE NEPTUNE AROUND EARTH
+  radius = 702222
+  let new_nep_x = Math.cos (neptune_theta) * radius
+  let new_nep_z = Math.sin (neptune_theta) * radius
+  let new_nep_pos = new Vector3 (new_nep_x, 0, new_nep_z)
+  new_nep_pos = new_nep_pos.add (sun_center)
+  earth.setTranslation (neptune_index, new_nep_pos)
+  //neptune_theta += .001
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
   let ship_offset_z = 3.6
@@ -1008,6 +1086,26 @@ function onKeyDown(event) {
   if (event.key == '4') {
     let planets = interactables[celestial_bodies_index]
     camera.position = planets.buildMatrix(mars_index).multiplyVector (planets.centroid).xyz
+    camera.end_point = camera.position
+  }
+  if (event.key == '5') {
+    let planets = interactables[celestial_bodies_index]
+    camera.position = planets.buildMatrix(juipter_index).multiplyVector (planets.centroid).xyz
+    camera.end_point = camera.position
+  }
+  if (event.key == '6') {
+    let planets = interactables[celestial_bodies_index]
+    camera.position = planets.buildMatrix(saturn_index).multiplyVector (planets.centroid).xyz
+    camera.end_point = camera.position
+  }
+  if (event.key == '7') {
+    let planets = interactables[celestial_bodies_index]
+    camera.position = planets.buildMatrix(uranus_index).multiplyVector (planets.centroid).xyz
+    camera.end_point = camera.position
+  }
+  if (event.key == '8') {
+    let planets = interactables[celestial_bodies_index]
+    camera.position = planets.buildMatrix(neptune_index).multiplyVector (planets.centroid).xyz
     camera.end_point = camera.position
   }
 }

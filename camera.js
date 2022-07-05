@@ -150,6 +150,15 @@ export class SlideCamera extends Camera {
     *  time_delta
     */
    timeStepMove () {
+    if (Math.abs (this.end_point.x - this.position.x) < 1 
+    && Math.abs (this.end_point.y - this.position.y) < 1
+    && Math.abs (this.end_point.z - this.position.z) < 1) {
+      this.position.x = this.end_point.x
+      this.position.y = this.end_point.y
+      this.position.z = this.end_point.z
+      this.reorient()
+      return
+    }
     this.position.x += (this.end_point.x - this.position.x) * this.time_delta
     this.position.y += (this.end_point.y - this.position.y) * this.time_delta
     this.position.z += (this.end_point.z - this.position.z) * this.time_delta
