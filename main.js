@@ -1,4 +1,4 @@
-
+``
 import { VertexAttributes } from './vertex-attributes'
 import { ShaderProgram } from './shader-program'
 import { VertexArray } from './vertex-array'
@@ -19,11 +19,10 @@ let shaderProgram
 let vao
 let clipFromEye
 let camera
-let moveDelta = 20
+let moveDelta = 5
 let turnDelta = 1
 let then = 0
 
-let max_float = 1.7976931348623157e+308
 
 // SKYBOX
 let skyboxShaderProgram
@@ -34,6 +33,7 @@ let shipShader
 
 // PLANETS / SUN
 let solarsystem_scale = .1
+let solarsystem_speed_scale = .0001
 let earth_index
 let moon_index
 let mecury_index
@@ -44,15 +44,6 @@ let saturn_index
 let uranus_index 
 let neptune_index 
 // is theta used to calc earth position in rotation around sun
-let earth_theta = 0
-let moon_theta = 0
-let mecury_theta = 0
-let venus_theta = 0
-let mars_theta = 0
-let juipter_theta = 0
-let saturn_theta = 0
-let uranus_theta = 0
-let neptune_theta = 0
 // SHADOW
 let texturesFromWorld = []
 let fbo
@@ -601,46 +592,79 @@ async function initInteractables() {
   planets.setScale (earth_index, new Vector3 (1,1,1).scalarMultiply(solarsystem_scale))
   planets.setTranslation (earth_index, offset)
   planets.setRotationZ (earth_index, 23.5)
+  planets.setRadius (earth_index, 23872)
+  planets.setOrbitSpeed (earth_index, 1)
+  planets.setRotationSpeed (earth_index, 365)
   // GENERATE MOON
   moon_index = earth_index + 1
-  // radius of moon relative 2 earth
   planets.setScale (moon_index, new Vector3 (.2727,.2727,.2727).scalarMultiply (solarsystem_scale))
   planets.setTranslation (moon_index, offset)
-  planets.setRotationZ (moon_index, 6.688)
-  // GENERATE MECURY
+  planets.setRotationZ (moon_index, 1.5)
+  planets.setRadius (moon_index, 356)
+  planets.setOrbitSpeed (moon_index, 12.38)
+  planets.setRotationSpeed (moon_index, 13.46)
+    // GENERATE MECURY
   mecury_index = moon_index + 1
   planets.setScale (mecury_index, new Vector3 (.383, .383, .383).scalarMultiply (solarsystem_scale))
   planets.setTranslation (mecury_index, offset)
+  planets.setRadius (mecury_index, 9093)
+  planets.setOrbitSpeed (mecury_index, 4.15)
+  planets.setRotationSpeed (mecury_index, 6.23)
+
   // GENERATE VENUS
   venus_index = mecury_index + 1
   planets.setScale (venus_index, new Vector3 (.95, .95, .95).scalarMultiply (solarsystem_scale))
   planets.setTranslation (venus_index, offset)
   planets.setRotationZ (venus_index, 2.64)
+  planets.setRadius (venus_index, 17003)
+  planets.setOrbitSpeed (venus_index, 1.16)
+  planets.setRotationSpeed (venus_index, 3.13)
+
   // GENERATE MARS
   mars_index = venus_index + 1
   planets.setScale (mars_index, new Vector3 (.532, .532, .532).scalarMultiply (solarsystem_scale))
   planets.setTranslation (mars_index, offset)
   planets.setRotationZ (mars_index, 25.19)
+  planets.setRadius (mars_index, 32657)
+  planets.setOrbitSpeed (mars_index, 0.52)
+  planets.setRotationSpeed (mars_index, 365.34)
+
   // GENERATE JUIPTER
   juipter_index = mars_index + 1
   planets.setScale (juipter_index, new Vector3 (10.97, 10.97, 10.97).scalarMultiply (solarsystem_scale))
   planets.setTranslation (juipter_index, offset)
   planets.setRotationZ (juipter_index, 3.13)
+  planets.setRadius (juipter_index, 116549)
+  planets.setOrbitSpeed (juipter_index, 0.084)
+  planets.setRotationSpeed (juipter_index,  884.38)
+
   // GENERATE SATURN
   saturn_index = juipter_index + 1
   planets.setScale (saturn_index, new Vector3 (9.1, 9.1, 9.1).scalarMultiply (solarsystem_scale))
   planets.setTranslation (saturn_index, offset)
   planets.setRotationZ (saturn_index, 26.73)
+  planets.setRadius (saturn_index, 231608)
+  planets.setOrbitSpeed (saturn_index, 0.034)
+  planets.setRotationSpeed (saturn_index, 822.65)
+
   // GENERATE  URANUS
   uranus_index = saturn_index + 1
   planets.setScale (uranus_index, new Vector3 (3.98, 3.98, 3.98).scalarMultiply (solarsystem_scale))
   planets.setTranslation (uranus_index, offset)
   planets.setRotationZ (uranus_index, 82.23)
+  planets.setRadius (uranus_index, 462338)
+  planets.setOrbitSpeed (uranus_index, 0.012)
+  planets.setRotationSpeed (uranus_index, 508.71)
+
   // GENERATE NEPTUNE
   neptune_index = uranus_index + 1
   planets.setScale (neptune_index, new Vector3 (3.86, 3.86, 3.86).scalarMultiply (solarsystem_scale))
   planets.setTranslation (neptune_index, offset)
   planets.setRotationZ (neptune_index, 28.32)
+  planets.setRadius (neptune_index, 702222)
+  planets.setOrbitSpeed (neptune_index, 0.006)
+  planets.setRotationSpeed (neptune_index, 544.143)
+
   // GENERATE HITBOXES
   generateVisualHitBoxes()
 
@@ -734,7 +758,7 @@ function createShipMirrorObject (lines, ship_shader, num_objs) {
   let indices = obj_trimesh.flat_indices()
   obj_attributes.addAttribute('position', positions.length / 3, 3, positions)
   obj_attributes.addAttribute('normal',   normals.length   / 3, 3, normals)
-  obj_attributes.addIndices  (indices)
+  obj_attributes.addIndices   (indices)
   let obj_vao = new VertexArray(ship_shader, obj_attributes)
   let tri_vao_group = new TrimeshVaoGrouping  (obj_trimesh.positions,
       obj_trimesh.normals, obj_trimesh.indices, 
@@ -784,93 +808,32 @@ function rotateInteractables(now) {
   }
 
   // MOVE EARTH AROUND SUN
-  let radius = 23872 * solarsystem_scale
-  let sun = interactables[celestial_bodies_index]
-  let new_earth_x = Math.cos (earth_theta) * radius
-  let new_earth_z = Math.sin (earth_theta) * radius
-  let earth = interactables[celestial_bodies_index]
-  let earth_position = earth.buildMatrix (earth_index)
-  let earth_center = earth_position.multiplyVector (earth.centroid)
   let sun_center = lightPosition
-  // READJUST TRANSLATION
-  earth.setTranslation (earth_index, new Vector3 (new_earth_x + sun_center.x,
-     sun_center.y, new_earth_z + sun_center.z))
-  //earth_theta += .001
+  let earth = interactables[celestial_bodies_index]
+  rotateAroundBody (interactables[celestial_bodies_index], earth_index, sun_center)
   
-  earth_position = earth.buildMatrix (earth_index)
-
+  // HAVE LIGHT FACE EARTH
+  let earth_position = earth.buildMatrix (earth_index)
   lightTarget = earth_position.multiplyVector (earth.centroid).xyz
   // MOVE MOON AROUND EARTH
-  radius = 356 * solarsystem_scale
-  let new_moon_x = Math.cos (moon_theta) * radius
-  let new_moon_z = Math.sin (moon_theta) * radius
-  let new_moon_pos = new Vector3 (new_moon_x, 1, new_moon_z)
-  new_moon_pos = Matrix4.rotateZ (6.688).multiplyVector (new_moon_pos)
-  earth.setTranslation (moon_index, 
-    new Vector3(new_moon_pos.x + earth_center.x, new_moon_pos.y + earth_center.y,
-      new_moon_pos.z + earth_center.z))
-  moon_theta += .01
-
+  let earth_center = earth_position.multiplyVector (earth.centroid)
+  // *** NOTE: Make sure to tilt moon axis o rotation 6.whatever degrees ***
+  rotateAroundBody (interactables[celestial_bodies_index], moon_index, earth_center)
   // MOVE MECURY AROUND SUN
-  radius = 9093 * solarsystem_scale
-  let new_merc_x = Math.cos (mecury_theta) * radius
-  let new_merc_z = Math.sin (mecury_theta) * radius
-  let new_merc_pos = new Vector3 (new_merc_x, 0, new_merc_z)
-  new_merc_pos = new_merc_pos.add (sun_center)
-  earth.setTranslation (mecury_index, new_merc_pos)
-  //mecury_theta += .001
-
+  rotateAroundBody (interactables[celestial_bodies_index], mecury_index, sun_center)
   // MOVE VENUS AROUND SUN
-  radius = 17003 * solarsystem_scale
-  let new_venus_x = Math.cos (venus_theta) * radius
-  let new_venus_z = Math.sin (venus_theta) * radius
-  let new_venus_pos = new Vector3 (new_venus_x, 0, new_venus_z)
-  new_venus_pos = new_venus_pos.add (sun_center)
-  earth.setTranslation (venus_index, new_venus_pos)
-  //venus_theta += .001
-
+  rotateAroundBody (interactables[celestial_bodies_index], venus_index, sun_center)
   // MOVE MARS AROUND SUN
-  radius = 32657 * solarsystem_scale
-  let new_mars_x = Math.cos (mars_theta) * radius
-  let new_mars_z = Math.sin (mars_theta) * radius
-  let new_mars_pos = new Vector3 (new_mars_x, 0, new_mars_z)
-  new_mars_pos = new_mars_pos.add (sun_center)
-  earth.setTranslation (mars_index, new_mars_pos)
-  //mars_theta += .001
-
+  rotateAroundBody (interactables[celestial_bodies_index], mars_index, sun_center)
   // MOVE JUIPTER AROUND EARTH
-  radius = 116549 * solarsystem_scale
-  let new_jup_x = Math.cos (juipter_theta) * radius
-  let new_jup_z = Math.sin (juipter_theta) * radius
-  let new_jup_pos = new Vector3 (new_jup_x, 0, new_jup_z)
-  new_jup_pos = new_jup_pos.add (sun_center)
-  earth.setTranslation (juipter_index, new_jup_pos)
-  //juipter_theta += .001
-  
+  rotateAroundBody (interactables[celestial_bodies_index], juipter_index, sun_center)
   // MOVE SATURN AROUND EARTH
-  radius = 231608 * solarsystem_scale
-  let new_sat_x = Math.cos (saturn_theta) * radius
-  let new_sat_z = Math.sin (saturn_theta) * radius
-  let new_sat_pos = new Vector3 (new_sat_x, 0, new_sat_z)
-  new_sat_pos = new_sat_pos.add (sun_center)
-  earth.setTranslation (saturn_index, new_sat_pos)
-  //saturn_theta += .001
+  rotateAroundBody (interactables[celestial_bodies_index], saturn_index, sun_center)
   // MOVE URANUS AROUND EARTH
-  radius = 462338 * solarsystem_scale
-  let new_ura_x = Math.cos (uranus_theta) * radius
-  let new_ura_z = Math.sin (uranus_theta) * radius
-  let new_ura_pos = new Vector3 (new_ura_x, 0, new_ura_z)
-  new_ura_pos = new_ura_pos.add (sun_center)
-  earth.setTranslation (uranus_index, new_ura_pos)
-  //uranus_theta += .001
+  rotateAroundBody (interactables[celestial_bodies_index], uranus_index, sun_center)
   // MOVE NEPTUNE AROUND EARTH
-  radius = 702222 * solarsystem_scale
-  let new_nep_x = Math.cos (neptune_theta) * radius
-  let new_nep_z = Math.sin (neptune_theta) * radius
-  let new_nep_pos = new Vector3 (new_nep_x, 0, new_nep_z)
-  new_nep_pos = new_nep_pos.add (sun_center)
-  earth.setTranslation (neptune_index, new_nep_pos)
-  //neptune_theta += .001
+  rotateAroundBody (interactables[celestial_bodies_index], neptune_index, sun_center)
+
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
   let ship_offset_z = 3.6
@@ -895,7 +858,14 @@ function rotateInteractables(now) {
     for (let i = 0; i < interactables.length; i++) {
       const interactable = interactables[i]
       for (let j = 0; j < interactable.num_objects; j++) {
-        interactable.addToRotationY (j, .1)
+        if (i == celestial_bodies_index && j == sun_index)
+          continue
+        else if (i == celestial_bodies_index) {
+          interactable.addToRotationY (j,
+            interactable.getRotationSpeed(j) * solarsystem_speed_scale)
+        }
+        else
+          interactable.addToRotationY (j, .1)
       }
     }
   }
@@ -942,6 +912,27 @@ function forceOfGravity (distance, mass_impact) {
   let force = 1/Math.pow(distance,2) * mass_impact
   return force
 } 
+
+/**
+ * 
+ * @param {TrimeshVaoGrouping} vao_group 
+ * @param {int} index 
+ * @param {float} radius 
+ * @param {float} theta 
+ * @param {vec3} rotation_center 
+ */
+function rotateAroundBody (vao_group, index, rotation_center) {
+  let scaled_radius = vao_group.getRadius(index) * solarsystem_scale
+  let theta = vao_group.getOrbitTheta(index)
+  let new_x = Math.cos (theta) * scaled_radius
+  let new_z = Math.sin (theta) * scaled_radius
+  let new_pos = new Vector3 (new_x, 0, new_z)
+  new_pos = new_pos.add (rotation_center)
+  vao_group.setTranslation (index, new_pos)
+  vao_group.addToOrbitTheta (index,
+     vao_group.getOrbitSpeed(index) * solarsystem_speed_scale)
+}
+
 
 /**
  * Checks if an inputed object is within bounding box of any iterable object
@@ -1159,8 +1150,6 @@ function generateLightCameras () {
   // z-
   lightTargets.push (new Vector3 ( lp.x, lp.y, lp.z - max_shadow_distance))
   lightWorldUps.push (new Vector3 (0, 1, 0))
-
-
 }
 
 

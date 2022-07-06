@@ -269,14 +269,35 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     this.translations = []
     this.rotations = []
     this.scales = []
+    this.radii = []
+    this.current_orbit_theta = []
+    this.rotation_speed = []
+    this.orbit_speed = []
     for (let i = 0; i < num_objects; i++)
     {
       this.translations.push (new Vector3 (0,0,0))
       this.rotations.push (new Vector3 (0,0,0))
       this.scales.push (new Vector3 (0,0,0))
-
+      this.radii.push (-1)
+      this.rotation_speed.push (-1)
+      this.orbit_speed.push (-1)
+      this.current_orbit_theta.push (-1)
     }
+
   }
+
+  setRadius (index, radius) {this.radii[index] = radius}
+  getRadius (index) {return this.radii[index]}
+
+  setRotationSpeed (index, rotation_speed) {this.rotation_speed[index] = rotation_speed}
+  getRotationSpeed (index) {return this.rotation_speed[index]}
+
+  setOrbitSpeed(index,orbit_speed) {this.orbit_speed[index] = orbit_speed}
+  getOrbitSpeed (index) {return this.orbit_speed[index]}
+
+  setOrbitTheta (index, theta) {this.current_orbit_theta[index] = theta}
+  getOrbitTheta (index) {return this.current_orbit_theta[index]}
+  addToOrbitTheta (index, a_theta) {this.current_orbit_theta[index] += a_theta}
 
   //sets mat4 at index
   setMatrix (worldFromModel, index) {
@@ -316,8 +337,8 @@ export class TrimeshVaoGrouping extends TrimeshVao {
    * @param {*} degree 
    */
   addToRotationX (index, degree) {
-    this.rotations[index].set (0, degree +
-      this.rotations[index].x)
+    this.rotations[index].set (0, (degree +
+      this.rotations[index].x) % 350)
   }
 
   /**
