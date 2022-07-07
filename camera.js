@@ -105,14 +105,12 @@ export class SlideCamera extends Camera {
    * time_delta: multipler for slide
    * velocity: current movement for camera
    */
-  constructor (from, to, worldUp, time_delta, max_value, min_value) {
+  constructor (from, to, worldUp, time_delta) {
     super (from, to, worldUp);
     this.time_delta = time_delta
     this.advance_move = 0;
     this.strafe_move = 0;
     this.elvate_move = 0;
-    this.max_value = max_value
-    this.min_value = min_value
     this.end_point = this.position
   }
 

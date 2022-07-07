@@ -33,7 +33,7 @@ let shipShader
 
 // PLANETS / SUN
 let solarsystem_scale = .1
-let solarsystem_speed_scale = .0001
+let solarsystem_speed_scale = .00001
 let earth_index
 let moon_index
 let mecury_index
@@ -53,7 +53,7 @@ let max_shadow_distance = 200000
 let cube_shadow_map
 let depth_buffer;
 
-let lightPosition = new Vector3(1000, 1000, 1000)
+let lightPosition = new Vector3(0, 0, 0)
 let lightTargets = []
 let lightWorldUps = []
 let lightTarget
@@ -359,41 +359,41 @@ async function initialize() {
   const from = new Vector3(100, 100, 100)
   const to = new Vector3(0, 0, 0)
   const worldup = new Vector3(0, 1, 0)
-  camera = new SlideCamera (from, to, worldup, .01, 300, 1)
+  camera = new SlideCamera (from, to, worldup, .01)
 
   // SKYBOX INIT
   skyboxShaderProgram = skybox_shader_program()
   let skyboxAttributes = generateSkybox()
   skyboxVao = new VertexArray (skyboxShaderProgram, skyboxAttributes)
-  
+  let folder = './textures/'
   // SKYBOX TEXTURE 
   await loadCubemap ("./bkg/solarsystem", "png", gl.TEXTURE1)
   // earth TEXTURE
-  const earthImage = await readImage('./earthmap1k.jpg')
+  const earthImage = await readImage(folder+'earthmap1k.jpg')
   createTexture2d (earthImage, gl.TEXTURE2)
   // SUN teXTURE
-  const sunImage = await readImage ('./sunmap.jpg')
+  const sunImage = await readImage (folder+'sunmap.jpg')
   createTexture2d (sunImage, gl.TEXTURE3)
 
-  const moonImage = await readImage ('./moon.png')
+  const moonImage = await readImage (folder+'moon.png')
   createTexture2d (moonImage, gl.TEXTURE4)
 
-  const mercImage = await readImage ('mercurymap.jpg')
+  const mercImage = await readImage (folder+'mercurymap.jpg')
   createTexture2d (mercImage, gl.TEXTURE5)
   
-  const venusImage = await readImage ('venusmap.jpg')
+  const venusImage = await readImage (folder+'venusmap.jpg')
   createTexture2d (venusImage, gl.TEXTURE6)
 
-  const marsImage = await readImage ('mars_1k_color.jpg')
+  const marsImage = await readImage (folder+'mars_1k_color.jpg')
   createTexture2d (marsImage, gl.TEXTURE7)
 
-  const jupImage = await readImage ('jupitermap.jpg')
+  const jupImage = await readImage (folder+'jupitermap.jpg')
   createTexture2d (jupImage, gl.TEXTURE8)
-  const satImage = await readImage ('saturnmap.jpg')
+  const satImage = await readImage (folder+'saturnmap.jpg')
   createTexture2d (satImage, gl.TEXTURE9)
-  const uraImage = await readImage ('uranusmap.jpg')
+  const uraImage = await readImage (folder+'uranusmap.jpg')
   createTexture2d (uraImage, gl.TEXTURE10)
-  const nepImage = await readImage ('neptunemap.jpg')
+  const nepImage = await readImage (folder+'neptunemap.jpg')
   createTexture2d (nepImage, gl.TEXTURE11)
 
   const vertexSource = `
@@ -486,7 +486,7 @@ void main() {
   // diffuse
   vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor * shadowFactor;
     //albedo * shadowFactor * litness;//
-  //vec3 rgb = diffuse;//ambient + diffuse + specular;
+  //vec3 rgb = diffuse;
   
   vec3 rgb = ambient + diffuse + specular;
   fragmentColor = realTexture * vec4(rgb, 1.0); //vec4 (diffuse, 1.0);
@@ -631,7 +631,7 @@ async function initInteractables() {
 
   // GENERATE JUIPTER
   juipter_index = mars_index + 1
-  planets.setScale (juipter_index, new Vector3 (10.97, 10.97, 10.97).scalarMultiply (solarsystem_scale))
+  planets.setScale (juipter_index, new Vector3 (11.21, 11.21, 11.21).scalarMultiply (solarsystem_scale))
   planets.setTranslation (juipter_index, offset)
   planets.setRotationZ (juipter_index, 3.13)
   planets.setRadius (juipter_index, 116549)
@@ -640,7 +640,7 @@ async function initInteractables() {
 
   // GENERATE SATURN
   saturn_index = juipter_index + 1
-  planets.setScale (saturn_index, new Vector3 (9.1, 9.1, 9.1).scalarMultiply (solarsystem_scale))
+  planets.setScale (saturn_index, new Vector3 (9.45, 9.45, 9.45).scalarMultiply (solarsystem_scale))
   planets.setTranslation (saturn_index, offset)
   planets.setRotationZ (saturn_index, 26.73)
   planets.setRadius (saturn_index, 231608)
@@ -914,7 +914,7 @@ function forceOfGravity (distance, mass_impact) {
 } 
 
 /**
- * 
+ * rotates object around center body
  * @param {TrimeshVaoGrouping} vao_group 
  * @param {int} index 
  * @param {float} radius 
@@ -930,7 +930,7 @@ function rotateAroundBody (vao_group, index, rotation_center) {
   new_pos = new_pos.add (rotation_center)
   vao_group.setTranslation (index, new_pos)
   vao_group.addToOrbitTheta (index,
-     vao_group.getOrbitSpeed(index) * solarsystem_speed_scale)
+    vao_group.getOrbitSpeed(index) * solarsystem_speed_scale)
 }
 
 
@@ -1066,43 +1066,27 @@ function onKeyDown(event) {
     console.log ("playerpos=" +camera.position)
   // teleports to planets with # key, corresponding to planet position 2 sun
   if (event.key == '3') {
-    let planets = interactables[celestial_bodies_index]
-    camera.position = planets.buildMatrix(earth_index).multiplyVector (planets.centroid).xyz
-    camera.end_point = camera.position
+    teleportToObject (celestial_bodies_index, earth_index)
   } if (event.key == '1') {
-    let planets = interactables[celestial_bodies_index]
-    camera.position = planets.buildMatrix(mecury_index).multiplyVector (planets.centroid).xyz
-    camera.end_point = camera.position
+    teleportToObject (celestial_bodies_index, mecury_index)
   }
   if (event.key == '2') {
-    let planets = interactables[celestial_bodies_index]
-    camera.position = planets.buildMatrix(venus_index).multiplyVector (planets.centroid).xyz
-    camera.end_point = camera.position
+    teleportToObject (celestial_bodies_index, venus_index)
   }
   if (event.key == '4') {
-    let planets = interactables[celestial_bodies_index]
-    camera.position = planets.buildMatrix(mars_index).multiplyVector (planets.centroid).xyz
-    camera.end_point = camera.position
+    teleportToObject (celestial_bodies_index, mars_index)
   }
   if (event.key == '5') {
-    let planets = interactables[celestial_bodies_index]
-    camera.position = planets.buildMatrix(juipter_index).multiplyVector (planets.centroid).xyz
-    camera.end_point = camera.position
+    teleportToObject (celestial_bodies_index, juipter_index)
   }
   if (event.key == '6') {
-    let planets = interactables[celestial_bodies_index]
-    camera.position = planets.buildMatrix(saturn_index).multiplyVector (planets.centroid).xyz
-    camera.end_point = camera.position
+    teleportToObject (celestial_bodies_index, saturn_index)
   }
   if (event.key == '7') {
-    let planets = interactables[celestial_bodies_index]
-    camera.position = planets.buildMatrix(uranus_index).multiplyVector (planets.centroid).xyz
-    camera.end_point = camera.position
+    teleportToObject (celestial_bodies_index, uranus_index)
   }
   if (event.key == '8') {
-    let planets = interactables[celestial_bodies_index]
-    camera.position = planets.buildMatrix(neptune_index).multiplyVector (planets.centroid).xyz
-    camera.end_point = camera.position
+    teleportToObject (celestial_bodies_index, neptune_index)
   }
 }
 /**
@@ -1123,6 +1107,14 @@ function onKeyUp (event) {
   } if (event.key ==  '-') {
     keysPressed.down = false
   }
+}
+
+function teleportToObject (vaogroup_index, obj_index, 
+  offset = new Vector3 (-10, 50, 20)) {
+    let group = interactables[vaogroup_index]
+    let target = group.buildMatrix(obj_index).multiplyVector (group.centroid).xyz
+    let position = offset.add (target)
+    camera = new SlideCamera (position, target, new Vector3 (0,1,0), .1)   
 }
 
 /**
