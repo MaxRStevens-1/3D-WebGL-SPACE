@@ -32,7 +32,7 @@ let skyboxVao
 let shipShader
 
 // PLANETS / SUN
-let solarsystem_scale = .1
+let solarsystem_scale = .01
 let solarsystem_speed_scale = .0001
 let earth_index
 let moon_index
@@ -88,6 +88,8 @@ let show_hitboxes = false
 let bound_camera_mode = false
 let bound_x = 0
 let bound_y = 0
+let bound_theta = 0
+let bound_phi = 0
 let bound_z = 0
 let bound_radius = 1
 let bound_vao_index
@@ -530,15 +532,9 @@ void main() {
     }
     else if (document.pointerLockElement && bound_camera_mode)
     {
-      let scale = .01
-      bound_x += event.movementX * scale
-      bound_y += event.movementY * scale
-      if (bound_x * bound_x + bound_y*bound_y >= bound_radius * bound_radius) 
-      {
-        bound_x -= event.movementX * scale * 2
-        bound_y -= event.movementY * scale * 2
-        //bound_neg_z = !bound_neg_z
-      }
+      let scale = .001
+      bound_theta += event.movementY * scale
+      bound_phi += event.movementX * scale
     }
   })
 
@@ -962,25 +958,14 @@ function rotateAroundBody (vao_group, index, rotation_center) {
     vao_group.getOrbitSpeed(index) * solarsystem_speed_scale)
 
     if (bound_camera_mode && bound_obj_index == index) {
-      bound_z = Math.sqrt (bound_radius*bound_radius - 
-      bound_x*bound_x - bound_y*bound_y)
+      bound_z = bound_radius * Math.cos (bound_phi)
+      bound_x = bound_radius * Math.sin (bound_phi) * Math.cos (bound_theta)
+      bound_y = bound_radius * Math.sin (bound_phi) * Math.sin (bound_theta)
       //if (bound_neg_z)
         //bound_z *= -1
       let move_sphere =  new Vector3 (-bound_x, -bound_y, -bound_z)
-      //new Vector3 (bound_x - bound_radius/2, bound_y - bound_radius/2, bound_z - bound_radius/2)
       let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
       let p_position = move_sphere.add (center)
-      console.log ("sphere="+move_sphere)
-      console.log ("center="+vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz)
-      console.log ("new position = " + p_position)
-      //camera.position = new Vector3 (bound_x, bound_y, bound_z)
-      console.log ("r =" + bound_radius)
-      console.log ("equation: rad(" + (bound_radius*bound_radius) + "-"
-        +(bound_x*bound_x)+"-"+(bound_y*bound_y))
-      console.log ("x="+(bound_x))
-      console.log ("y="+(bound_y))
-      console.log ("z="+(bound_z))
-      console.log ("______________________")
       camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), .01)
     }
 
@@ -1121,30 +1106,92 @@ function onKeyDown(event) {
   // teleports to planets with # key, corresponding to planet position 2 sun
   if (event.key == '3') {
     teleportToObject (celestial_bodies_index, earth_index)
+    if (bound_camera_mode && bound_obj_index == earth_index) {
+      bound_camera_mode = false
+      return
+    }
+    bound_camera_mode = true
+    bound_radius = 1.5 + 1 
+    bound_vao_index = celestial_bodies_index
+    bound_obj_index = earth_index
+
   } if (event.key == '1') {
     teleportToObject (celestial_bodies_index, mecury_index)
+
+    if (bound_camera_mode && bound_obj_index == mecury_index) {
+      bound_camera_mode = false
+      return
+    }
     bound_camera_mode = true
-    bound_radius = 15 + .383 
+    bound_radius = 1.5 + .383 
     bound_vao_index = celestial_bodies_index
     bound_obj_index = mecury_index
   }
   if (event.key == '2') {
     teleportToObject (celestial_bodies_index, venus_index)
+    if (bound_camera_mode && bound_obj_index == venus_index) {
+      bound_camera_mode = false
+      return
+    }
+    bound_camera_mode = true
+    bound_radius = 1.5 + .95 
+    bound_vao_index = celestial_bodies_index
+    bound_obj_index = venus_index
   }
   if (event.key == '4') {
     teleportToObject (celestial_bodies_index, mars_index)
+    if (bound_camera_mode && bound_obj_index == mars_index) {
+      bound_camera_mode = false
+      return
+    }
+    bound_camera_mode = true
+    bound_radius = 1.5 + .532
+    bound_vao_index = celestial_bodies_index
+    bound_obj_index = mars_index
   }
   if (event.key == '5') {
     teleportToObject (celestial_bodies_index, juipter_index)
+    if (bound_camera_mode && bound_obj_index == juipter_index) {
+      bound_camera_mode = false
+      return
+    }
+    bound_camera_mode = true
+    bound_radius = 1.5 + 11.21
+    bound_vao_index = celestial_bodies_index
+    bound_obj_index = juipter_index
   }
   if (event.key == '6') {
     teleportToObject (celestial_bodies_index, saturn_index)
+    if (bound_camera_mode && bound_obj_index == saturn_index) {
+      bound_camera_mode = false
+      return
+    }
+    bound_camera_mode = true
+    bound_radius = 1.5 + 9.45
+    bound_vao_index = celestial_bodies_index
+    bound_obj_index = saturn_index
   }
   if (event.key == '7') {
     teleportToObject (celestial_bodies_index, uranus_index)
+    if (bound_camera_mode && bound_obj_index == uranus_index) {
+      bound_camera_mode = false
+      return
+    }
+    bound_camera_mode = true
+    bound_radius = 1.5 + 3.98
+    bound_vao_index = celestial_bodies_index
+    bound_obj_index = uranus_index
   }
   if (event.key == '8') {
     teleportToObject (celestial_bodies_index, neptune_index)
+    if (bound_camera_mode && bound_obj_index == neptune_index) {
+      bound_camera_mode = false
+      return
+    }
+    bound_camera_mode = true
+    bound_radius = 1.5 + 3.86
+    bound_vao_index = celestial_bodies_index
+    bound_obj_index = neptune_index
   }
 }
 /**
