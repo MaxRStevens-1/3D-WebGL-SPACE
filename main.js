@@ -33,7 +33,7 @@ let shipShader
 
 // PLANETS / SUN
 let solarsystem_scale = .1
-let solarsystem_speed_scale = .00001
+let solarsystem_speed_scale = .0001
 let earth_index
 let moon_index
 let mecury_index
@@ -83,6 +83,16 @@ const objectPositions = []
 
 // BOUNDINGBOXES
 let show_hitboxes = false
+
+// BOUND CAMERA
+let bound_camera_mode = false
+let bound_x = 0
+let bound_y = 0
+let bound_z = 0
+let bound_radius = 1
+let bound_vao_index
+let bound_obj_index
+let bound_neg_z = false
 
 // KEYPRESSES
 let keysPressed = {
@@ -167,8 +177,8 @@ function render(k) {
 
   shaderProgram.setUniform3f('specularColor', .8, .9, .1)
   shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-  shaderProgram.setUniform1f('shininess', 255)
-  shaderProgram.setUniform1f('ambientFactor', .2)
+  shaderProgram.setUniform1f('shininess', 180)
+  shaderProgram.setUniform1f('ambientFactor', .3)
   shaderProgram.setUniform1i("depthTexture", 0);
   //for (let k = 0; k < 6; k++) 
   //{
@@ -181,7 +191,7 @@ function render(k) {
           continue
         if (i == 1)
           continue
-        const pos = interactable.buildMatrix(j)//.getMatrix(j)
+        const pos = interactable.buildMatrix(j)
         // SET AS ATTRIBUTE
         shaderProgram.setUniformMatrix4('worldFromModel', pos)
         // sphere index
@@ -207,11 +217,13 @@ function render(k) {
         if (i == celestial_bodies_index && j == neptune_index)
           shaderProgram.setUniform1i ('normTexture', 11)
         interactable.vao.drawIndexed(gl.TRIANGLES)
+
       }
     interactable.vao.unbind() 
     }
   //}
   shaderProgram.unbind()
+  if (!bound_camera_mode) {
   // SHIPS AS MIRRORS
     shipShader.bind()
     shipShader.setUniformMatrix4('worldFromModel', worldFromModel);
@@ -230,6 +242,7 @@ function render(k) {
     }
 
   shipShader.unbind()
+  }
 }
 
 // Shadow/Depths render function
@@ -511,9 +524,21 @@ void main() {
     document.body.requestPointerLock()
   })
   window.addEventListener('pointermove', (event) => {
-    if (document.pointerLockElement) {
+    if (document.pointerLockElement && !bound_camera_mode) {
       camera.yaw(-event.movementX * turnDelta)
       camera.pitch(-event.movementY * turnDelta)
+    }
+    else if (document.pointerLockElement && bound_camera_mode)
+    {
+      let scale = .01
+      bound_x += event.movementX * scale
+      bound_y += event.movementY * scale
+      if (bound_x * bound_x + bound_y*bound_y >= bound_radius * bound_radius) 
+      {
+        bound_x -= event.movementX * scale * 2
+        bound_y -= event.movementY * scale * 2
+        //bound_neg_z = !bound_neg_z
+      }
     }
   })
 
@@ -790,6 +815,9 @@ function createObject(lines) {
 
 // REWRITE AND RENAME
 function rotateInteractables(now) {
+
+
+
   // CHECK GRAVITY
   let ship = objects[0]
   let ship_distance = checkSphereDistance (ship, objectPositions[0]);
@@ -814,9 +842,10 @@ function rotateInteractables(now) {
   
   // HAVE LIGHT FACE EARTH
   let earth_position = earth.buildMatrix (earth_index)
-  lightTarget = earth_position.multiplyVector (earth.centroid).xyz
-  // MOVE MOON AROUND EARTH
   let earth_center = earth_position.multiplyVector (earth.centroid)
+  
+  lightTarget = earth_center.xyz
+  // MOVE MOON AROUND EARTH
   // *** NOTE: Make sure to tilt moon axis o rotation 6.whatever degrees ***
   rotateAroundBody (interactables[celestial_bodies_index], moon_index, earth_center)
   // MOVE MECURY AROUND SUN
@@ -931,6 +960,30 @@ function rotateAroundBody (vao_group, index, rotation_center) {
   vao_group.setTranslation (index, new_pos)
   vao_group.addToOrbitTheta (index,
     vao_group.getOrbitSpeed(index) * solarsystem_speed_scale)
+
+    if (bound_camera_mode && bound_obj_index == index) {
+      bound_z = Math.sqrt (bound_radius*bound_radius - 
+      bound_x*bound_x - bound_y*bound_y)
+      //if (bound_neg_z)
+        //bound_z *= -1
+      let move_sphere =  new Vector3 (-bound_x, -bound_y, -bound_z)
+      //new Vector3 (bound_x - bound_radius/2, bound_y - bound_radius/2, bound_z - bound_radius/2)
+      let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
+      let p_position = move_sphere.add (center)
+      console.log ("sphere="+move_sphere)
+      console.log ("center="+vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz)
+      console.log ("new position = " + p_position)
+      //camera.position = new Vector3 (bound_x, bound_y, bound_z)
+      console.log ("r =" + bound_radius)
+      console.log ("equation: rad(" + (bound_radius*bound_radius) + "-"
+        +(bound_x*bound_x)+"-"+(bound_y*bound_y))
+      console.log ("x="+(bound_x))
+      console.log ("y="+(bound_y))
+      console.log ("z="+(bound_z))
+      console.log ("______________________")
+      camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), .01)
+    }
+
 }
 
 
@@ -1035,6 +1088,7 @@ function checkObjectToObjectCollision (input_obj, pos_mat) {
  * @param {*} event 
  */
 function onKeyDown(event) {
+
   if (event.key === 'ArrowUp' || event.key == 'w' || keysPressed.w) {
     camera.adjustVelocityAdvance(moveDelta)
     keysPressed.w = true
@@ -1069,6 +1123,10 @@ function onKeyDown(event) {
     teleportToObject (celestial_bodies_index, earth_index)
   } if (event.key == '1') {
     teleportToObject (celestial_bodies_index, mecury_index)
+    bound_camera_mode = true
+    bound_radius = 15 + .383 
+    bound_vao_index = celestial_bodies_index
+    bound_obj_index = mecury_index
   }
   if (event.key == '2') {
     teleportToObject (celestial_bodies_index, venus_index)
