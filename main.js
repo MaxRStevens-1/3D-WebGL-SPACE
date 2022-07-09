@@ -33,7 +33,7 @@ let shipShader
 
 // PLANETS / SUN
 let solarsystem_scale = .01
-let solarsystem_speed_scale = .0001
+let solarsystem_speed_scale = 1
 let earth_index
 let moon_index
 let mecury_index
@@ -48,7 +48,7 @@ let neptune_index
 let texturesFromWorld = []
 let fbo
 let depthProgram;
-const textDim = 256;
+const textDim = 128;
 let max_shadow_distance = 200000
 let cube_shadow_map
 let depth_buffer;
@@ -76,7 +76,6 @@ const ambientFactor = 0.7;
 
 // OBJECTS
 const interactables = [];
-let degrees = 1;
 
 const objects = []
 const objectPositions = []
@@ -94,7 +93,6 @@ let bound_z = 0
 let bound_radius = 1
 let bound_vao_index
 let bound_obj_index
-let bound_neg_z = false
 
 // KEYPRESSES
 let keysPressed = {
@@ -178,8 +176,8 @@ function render(k) {
   
 
   shaderProgram.setUniform3f('specularColor', .8, .9, .1)
-  shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-  shaderProgram.setUniform1f('shininess', 180)
+  shaderProgram.setUniform3f('diffuseColor', .9, .9, .9)
+  shaderProgram.setUniform1f('shininess', 1000000)
   shaderProgram.setUniform1f('ambientFactor', .3)
   shaderProgram.setUniform1i("depthTexture", 0);
   //for (let k = 0; k < 6; k++) 
@@ -382,7 +380,7 @@ async function initialize() {
   skyboxVao = new VertexArray (skyboxShaderProgram, skyboxAttributes)
   let folder = './textures/'
   // SKYBOX TEXTURE 
-  await loadCubemap ("./bkg/solarsystem", "png", gl.TEXTURE1)
+  await loadCubemap ("./bkg/lightblue", "png", gl.TEXTURE1)
   // earth TEXTURE
   const earthImage = await readImage(folder+'earthmap1k.jpg')
   createTexture2d (earthImage, gl.TEXTURE2)
@@ -532,7 +530,7 @@ void main() {
     }
     else if (document.pointerLockElement && bound_camera_mode)
     {
-      let scale = .001
+      let scale = .1
       bound_theta += event.movementY * scale
       bound_phi += event.movementX * scale
     }
@@ -573,7 +571,7 @@ async function initInteractables() {
   // CREATE SUN
   let offset = lightPosition
   celestial_bodies_index = 0
-  let spheres = generateSphereObject (20, 20, 20, offset, 3, 10)
+  let spheres = generateSphereObject (32, 32, 20, offset, 3, 10)
   spheres.setTranslation (sun_index, offset)
   spheres.setScale (sun_index, new Vector3 (109.29,109.29,109.29).scalarMultiply (solarsystem_scale))
   interactables.push (spheres)
@@ -610,86 +608,78 @@ async function initInteractables() {
   // SET EARTH IN PLANET TRI VAO GROUP
   let planets = interactables[celestial_bodies_index]
   earth_index = sun_index + 1
-  planets.setScale (earth_index, new Vector3 (1,1,1).scalarMultiply(solarsystem_scale))
-  planets.setTranslation (earth_index, offset)
-  planets.setRotationZ (earth_index, 23.5)
-  planets.setRadius (earth_index, 23872)
-  planets.setOrbitSpeed (earth_index, 1)
-  planets.setRotationSpeed (earth_index, 365)
+  let rotation = new Vector3 (0, 0, 23.5)
+  setTriVaoGroupObj (celestial_bodies_index, earth_index, 
+    1, offset, rotation, 23872, .00273, 1)
   // GENERATE MOON
   moon_index = earth_index + 1
-  planets.setScale (moon_index, new Vector3 (.2727,.2727,.2727).scalarMultiply (solarsystem_scale))
-  planets.setTranslation (moon_index, offset)
-  planets.setRotationZ (moon_index, 1.5)
-  planets.setRadius (moon_index, 356)
-  planets.setOrbitSpeed (moon_index, 12.38)
-  planets.setRotationSpeed (moon_index, 13.46)
-    // GENERATE MECURY
+  rotation = new Vector3 (0, 0, 1.5)
+  setTriVaoGroupObj (celestial_bodies_index, moon_index, 
+    .2727, offset, rotation, 356, .0366, .0339)
+  // GENERATE MECURY
   mecury_index = moon_index + 1
-  planets.setScale (mecury_index, new Vector3 (.383, .383, .383).scalarMultiply (solarsystem_scale))
-  planets.setTranslation (mecury_index, offset)
-  planets.setRadius (mecury_index, 9093)
-  planets.setOrbitSpeed (mecury_index, 4.15)
-  planets.setRotationSpeed (mecury_index, 6.23)
-
+  rotation = new Vector3 (0, 0, 2)
+  setTriVaoGroupObj (celestial_bodies_index, mecury_index, 
+    .383, offset, rotation, 9093, .0114, .0057)
   // GENERATE VENUS
   venus_index = mecury_index + 1
-  planets.setScale (venus_index, new Vector3 (.95, .95, .95).scalarMultiply (solarsystem_scale))
-  planets.setTranslation (venus_index, offset)
-  planets.setRotationZ (venus_index, 2.64)
-  planets.setRadius (venus_index, 17003)
-  planets.setOrbitSpeed (venus_index, 1.16)
-  planets.setRotationSpeed (venus_index, 3.13)
-
+  rotation = new Vector3 (0, 0, 3)
+  setTriVaoGroupObj (celestial_bodies_index, venus_index, 
+    .95, offset, rotation, 17003, .0045, .0086)
   // GENERATE MARS
   mars_index = venus_index + 1
-  planets.setScale (mars_index, new Vector3 (.532, .532, .532).scalarMultiply (solarsystem_scale))
-  planets.setTranslation (mars_index, offset)
-  planets.setRotationZ (mars_index, 25.19)
-  planets.setRadius (mars_index, 32657)
-  planets.setOrbitSpeed (mars_index, 0.52)
-  planets.setRotationSpeed (mars_index, 365.34)
-
+  rotation = new Vector3 (0, 0, 25.19)
+  setTriVaoGroupObj (celestial_bodies_index, mars_index, .532, offset,
+     rotation, 32657, .0015, .972)
   // GENERATE JUIPTER
   juipter_index = mars_index + 1
-  planets.setScale (juipter_index, new Vector3 (11.21, 11.21, 11.21).scalarMultiply (solarsystem_scale))
-  planets.setTranslation (juipter_index, offset)
-  planets.setRotationZ (juipter_index, 3.13)
-  planets.setRadius (juipter_index, 116549)
-  planets.setOrbitSpeed (juipter_index, 0.084)
-  planets.setRotationSpeed (juipter_index,  884.38)
-
+  rotation = new Vector3 (0, 0, 3.13)
+  setTriVaoGroupObj (celestial_bodies_index, juipter_index,  11.21, offset,
+     rotation, 116549, .00023, 2.424)
   // GENERATE SATURN
   saturn_index = juipter_index + 1
-  planets.setScale (saturn_index, new Vector3 (9.45, 9.45, 9.45).scalarMultiply (solarsystem_scale))
-  planets.setTranslation (saturn_index, offset)
-  planets.setRotationZ (saturn_index, 26.73)
-  planets.setRadius (saturn_index, 231608)
-  planets.setOrbitSpeed (saturn_index, 0.034)
-  planets.setRotationSpeed (saturn_index, 822.65)
-
+  rotation = new Vector3 (0, 0, 26.73)
+  setTriVaoGroupObj (celestial_bodies_index, saturn_index, 
+    9.45, offset, rotation, 231608, 0.000093, 2.243)
   // GENERATE  URANUS
   uranus_index = saturn_index + 1
-  planets.setScale (uranus_index, new Vector3 (3.98, 3.98, 3.98).scalarMultiply (solarsystem_scale))
-  planets.setTranslation (uranus_index, offset)
-  planets.setRotationZ (uranus_index, 82.23)
-  planets.setRadius (uranus_index, 462338)
-  planets.setOrbitSpeed (uranus_index, 0.012)
-  planets.setRotationSpeed (uranus_index, 508.71)
-
+  rotation = new Vector3 (0, 0, 82.23)
+  setTriVaoGroupObj (celestial_bodies_index, uranus_index, 
+    3.98, offset, rotation, 462338, .000033, 1.4)
   // GENERATE NEPTUNE
   neptune_index = uranus_index + 1
-  planets.setScale (neptune_index, new Vector3 (3.86, 3.86, 3.86).scalarMultiply (solarsystem_scale))
-  planets.setTranslation (neptune_index, offset)
-  planets.setRotationZ (neptune_index, 28.32)
-  planets.setRadius (neptune_index, 702222)
-  planets.setOrbitSpeed (neptune_index, 0.006)
-  planets.setRotationSpeed (neptune_index, 544.143)
-
+  rotation = new Vector3 (0, 0, 28.32)
+  setTriVaoGroupObj (celestial_bodies_index, neptune_index, 
+    3.86, offset, rotation, 702222, .000017, 1.491)
   // GENERATE HITBOXES
   generateVisualHitBoxes()
 
 }
+
+/**
+ * constructs 1 obj in trivao grouping.
+ * @param {int} group_index 
+ * @param {int} obj_index 
+ * @param {float} scale
+ * @param {vec3} translation 
+ * @param {vec3} rotation 
+ * @param {float} radius 
+ * @param {float} orbit_speed 
+ * @param {float} rotation_speed 
+ */
+function setTriVaoGroupObj (group_index, obj_index, scale, translation, rotation,
+   radius, orbit_speed, rotation_speed) {
+    let group = interactables[group_index]
+    group.setScale (obj_index, new Vector3 (scale, scale, scale).scalarMultiply (solarsystem_scale))
+    group.setTranslation (obj_index, translation)
+    group.setRotationX (obj_index, rotation.x)
+    group.setRotationY (obj_index, rotation.y)
+    group.setRotationZ (obj_index, rotation.z)
+    group.setRadius (obj_index, radius)
+    group.setOrbitSpeed (obj_index, orbit_speed)
+    group.setRotationSpeed (obj_index, rotation_speed)
+    //group.setOrbitTheta (obj_index, 2 * Math.PI * Math.random())
+   }
 
 /**
  * Generates an physical physical sphere obejct
@@ -718,11 +708,6 @@ function generateSphereObject (nlat, nlong, radius, offset, texture_index, num_s
   sphere_attributes.addIndices (sInd)
   let sphere_vao = new VertexArray (shaderProgram, sphere_attributes)
   sphere_trivao.vao = sphere_vao
-  // SPHERE POSITION
-  let x = offset.x
-  let z = offset.z
-  let y = offset.y
-
   return sphere_trivao
 }
 
@@ -955,14 +940,14 @@ function rotateAroundBody (vao_group, index, rotation_center) {
   new_pos = new_pos.add (rotation_center)
   vao_group.setTranslation (index, new_pos)
   vao_group.addToOrbitTheta (index,
-    vao_group.getOrbitSpeed(index) * solarsystem_speed_scale)
+    vao_group.getOrbitSpeed(index) * solarsystem_speed_scale * (Math.PI / 180))
 
     if (bound_camera_mode && bound_obj_index == index) {
-      bound_z = bound_radius * Math.cos (bound_phi)
-      bound_x = bound_radius * Math.sin (bound_phi) * Math.cos (bound_theta)
-      bound_y = bound_radius * Math.sin (bound_phi) * Math.sin (bound_theta)
-      //if (bound_neg_z)
-        //bound_z *= -1
+      let local_phi = bound_phi * (Math.PI / 180)
+      let local_theta = bound_theta * (Math.PI / 180)
+      bound_z = bound_radius * Math.cos (local_phi)
+      bound_x = bound_radius * Math.sin (local_phi) * Math.cos (local_theta)
+      bound_y = bound_radius * Math.sin (local_phi) * Math.sin (local_theta)
       let move_sphere =  new Vector3 (-bound_x, -bound_y, -bound_z)
       let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
       let p_position = move_sphere.add (center)
@@ -1106,15 +1091,25 @@ function onKeyDown(event) {
   // teleports to planets with # key, corresponding to planet position 2 sun
   if (event.key == '3') {
     teleportToObject (celestial_bodies_index, earth_index)
-    if (bound_camera_mode && bound_obj_index == earth_index) {
+    if (bound_camera_mode && bound_obj_index == moon_index)
+    {
       bound_camera_mode = false
       return
     }
+    if (bound_camera_mode && bound_obj_index == earth_index) {
+      bound_obj_index = moon_index
+      bound_radius = 1 + .2727
+      bound_phi = 0
+      bound_theta = 0
+      return
+    }
+
     bound_camera_mode = true
     bound_radius = 1.5 + 1 
     bound_vao_index = celestial_bodies_index
     bound_obj_index = earth_index
-
+    bound_phi = 0
+    bound_theta = 0
   } if (event.key == '1') {
     teleportToObject (celestial_bodies_index, mecury_index)
 
@@ -1126,6 +1121,8 @@ function onKeyDown(event) {
     bound_radius = 1.5 + .383 
     bound_vao_index = celestial_bodies_index
     bound_obj_index = mecury_index
+    bound_phi = 0
+    bound_theta = 0
   }
   if (event.key == '2') {
     teleportToObject (celestial_bodies_index, venus_index)
@@ -1137,6 +1134,8 @@ function onKeyDown(event) {
     bound_radius = 1.5 + .95 
     bound_vao_index = celestial_bodies_index
     bound_obj_index = venus_index
+    bound_phi = 0
+    bound_theta = 0
   }
   if (event.key == '4') {
     teleportToObject (celestial_bodies_index, mars_index)
@@ -1148,6 +1147,8 @@ function onKeyDown(event) {
     bound_radius = 1.5 + .532
     bound_vao_index = celestial_bodies_index
     bound_obj_index = mars_index
+    bound_phi = 0
+    bound_theta = 0
   }
   if (event.key == '5') {
     teleportToObject (celestial_bodies_index, juipter_index)
@@ -1159,6 +1160,8 @@ function onKeyDown(event) {
     bound_radius = 1.5 + 11.21
     bound_vao_index = celestial_bodies_index
     bound_obj_index = juipter_index
+    bound_phi = 0
+    bound_theta = 0
   }
   if (event.key == '6') {
     teleportToObject (celestial_bodies_index, saturn_index)
@@ -1170,6 +1173,8 @@ function onKeyDown(event) {
     bound_radius = 1.5 + 9.45
     bound_vao_index = celestial_bodies_index
     bound_obj_index = saturn_index
+    bound_phi = 0
+    bound_theta = 0
   }
   if (event.key == '7') {
     teleportToObject (celestial_bodies_index, uranus_index)
@@ -1181,6 +1186,8 @@ function onKeyDown(event) {
     bound_radius = 1.5 + 3.98
     bound_vao_index = celestial_bodies_index
     bound_obj_index = uranus_index
+    bound_phi = 0
+    bound_theta = 0
   }
   if (event.key == '8') {
     teleportToObject (celestial_bodies_index, neptune_index)
@@ -1192,6 +1199,8 @@ function onKeyDown(event) {
     bound_radius = 1.5 + 3.86
     bound_vao_index = celestial_bodies_index
     bound_obj_index = neptune_index
+    bound_phi = 0
+    bound_theta = 0
   }
 }
 /**
