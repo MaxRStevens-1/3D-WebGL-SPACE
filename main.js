@@ -950,27 +950,16 @@ function rotateAroundBody (vao_group, index, rotation_center) {
   new_pos = new_pos.add (rotation_center)
   vao_group.setTranslation (index, new_pos)
   vao_group.addToOrbitTheta (index,
-    vao_group.getOrbitSpeed(index) * solarsystem_speed_scale * (Math.PI / 180))
+  vao_group.getOrbitSpeed(index) * solarsystem_speed_scale * (Math.PI / 180))
 
     if (bound_camera_mode && bound_obj_index == index) {  
-      //bound_y = -1
-        if (bound_x * bound_x + bound_y * bound_y >= bound_radius * bound_radius) {
-          console.log ("SHITS FUCKED")
-          //bound_x += .01 * x_heading
-        }
         bound_z = Math.sqrt (bound_radius*bound_radius - bound_x*bound_x - bound_y*bound_y) * z_negative
         let move_sphere =  new Vector3 (-bound_x, -bound_y, -bound_z)
-        console.log ("sphere= "+move_sphere)
-        console.log ("eq= rad(" + (bound_radius*bound_radius) + " - " + (bound_x * bound_x) + " - " + bound_y*bound_y+")")
-        console.log ("x= "+bound_x*-1)
-        console.log ("y= "+bound_y*-1)
-        console.log ("z= "+bound_z*-1)
-        console.log ("_____________________________________")
 
         let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
         let p_position = move_sphere.add (center)
 
-        camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), .01)
+        camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), .005)
     }
 
 }
@@ -1238,7 +1227,7 @@ function teleportToObject (vaogroup_index, obj_index,
     let group = interactables[vaogroup_index]
     let target = group.buildMatrix(obj_index).multiplyVector (group.centroid).xyz
     let position = offset.add (target)
-    camera = new SlideCamera (position, target, new Vector3 (0,1,0), .1)   
+    camera = new SlideCamera (position, target, new Vector3 (0,1,0),  .005)   
 }
 
 /**
