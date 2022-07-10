@@ -540,7 +540,7 @@ void main() {
       if (new_y * new_y + bound_x * bound_x >= bound_radius*bound_radius) {
         y_heading = y_heading * -1
       }
-      if (new_x * new_x + new_y*new_y > bound_radius * bound_radius) 
+      if (new_x * new_x + new_y*new_y >= bound_radius * bound_radius) 
         z_negative = z_negative * -1
       bound_x += event.movementX * scale * x_heading
       bound_y +=  event.movementY * scale * y_heading
@@ -952,7 +952,13 @@ function rotateAroundBody (vao_group, index, rotation_center) {
   vao_group.addToOrbitTheta (index,
   vao_group.getOrbitSpeed(index) * solarsystem_speed_scale * (Math.PI / 180))
 
-    if (bound_camera_mode && bound_obj_index == index) {  
+    if (bound_camera_mode && bound_obj_index == index) {
+        if (bound_x * bound_x + bound_y * bound_y >= bound_radius*bound_radius)  {
+          console.log ("AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH IMAGINARY #s")
+          //while (true){}
+          bound_x = 0
+          bound_y = 0
+        }
         bound_z = Math.sqrt (bound_radius*bound_radius - bound_x*bound_x - bound_y*bound_y) * z_negative
         let move_sphere =  new Vector3 (-bound_x, -bound_y, -bound_z)
 
@@ -1107,14 +1113,14 @@ function onKeyDown(event) {
     }
     if (bound_camera_mode && bound_obj_index == earth_index) {
       bound_obj_index = moon_index
-      bound_radius = 1 + .2727
+      bound_radius = .2727 * 1.5
       bound_x = 0
       bound_y = 0
       return
     }
 
     bound_camera_mode = true
-    bound_radius = 1.5 + 1 
+    bound_radius = 1*1.5
     bound_vao_index = celestial_bodies_index
     bound_obj_index = earth_index
   } if (event.key == '1') {
@@ -1125,7 +1131,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = 1.5 + .383 
+    bound_radius = .383 * 1.5
     bound_vao_index = celestial_bodies_index
     bound_obj_index = mecury_index
   }
@@ -1136,7 +1142,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = 1.5 + .95 
+    bound_radius =  .95 * 1.5
     bound_vao_index = celestial_bodies_index
     bound_obj_index = venus_index
   }
@@ -1147,7 +1153,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = 1.5 + .532
+    bound_radius = .532 * 1.5
     bound_vao_index = celestial_bodies_index
     bound_obj_index = mars_index
   }
@@ -1158,7 +1164,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = 1.5 + 11.21
+    bound_radius = 11.21 * 1.5
     bound_vao_index = celestial_bodies_index
     bound_obj_index = juipter_index
   }
@@ -1169,7 +1175,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = 1.5 + 9.45
+    bound_radius = 9.45 * 1.5
     bound_vao_index = celestial_bodies_index
     bound_obj_index = saturn_index
   }
@@ -1180,7 +1186,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = 1.5 + 3.98
+    bound_radius = 3.98 * 1.5
     bound_vao_index = celestial_bodies_index
     bound_obj_index = uranus_index
   }
@@ -1191,7 +1197,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = 1.5 + 3.86
+    bound_radius = 3.86 * 1.5
     bound_vao_index = celestial_bodies_index
     bound_obj_index = neptune_index
   }

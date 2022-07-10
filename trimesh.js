@@ -399,16 +399,13 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     let rotationM = Matrix4.identity()
     if (rotation.x != 0)
       rotationM = rotationM.multiplyMatrix (Matrix4.rotateX(rotation.x))
-    if (rotation.y != 0)
-      rotationM = rotationM.multiplyMatrix (Matrix4.rotateY(rotation.y))
     if (rotation.z != 0)
       rotationM = rotationM.multiplyMatrix (Matrix4.rotateZ(rotation.z))
-    if (rotation.h != 0) {
-      let degree = rotation.h
-      rotationM = rotationM.multiplyMatrix (
-      Matrix4.rotateAroundAxis(new Vector4(this.centroid.normalize(), degree)))
-    }
-    let translationM = Matrix4.translate (translation.x, 
+    if (rotation.y != 0)
+      rotationM = rotationM.multiplyMatrix (Matrix4.rotateY(rotation.y))
+
+
+    let translationM = Matrix4.translate (translation.x,    
       translation.y, translation.z)
     
     return translationM.multiplyMatrix(scaleM).multiplyMatrix (rotationM)
