@@ -93,6 +93,7 @@ let bound_radius = 1
 let bound_vao_index
 let bound_obj_index
 let x_heading = 1
+let y_heading = 1
 let z_negative = 1
 
 // KEYPRESSES
@@ -530,15 +531,19 @@ void main() {
     }
     else if (document.pointerLockElement && bound_camera_mode)
     {
-      let scale = .01
-      bound_x += event.movementX * scale * x_heading
-      //bound_y += event.movementY * scale
-      if (bound_x * bound_x + bound_y*bound_y > bound_radius * bound_radius) 
-      {
+      let scale = bound_radius * .001
+      let new_x = bound_x + event.movementX * scale * x_heading
+      let new_y = bound_y + event.movementY * scale * y_heading
+      if (new_x*new_x + bound_y * bound_y >= bound_radius * bound_radius) {
         x_heading = x_heading * -1
-        z_negative = z_negative * -1
       }
-      
+      if (new_y * new_y + bound_x * bound_x >= bound_radius*bound_radius) {
+        y_heading = y_heading * -1
+      }
+      if (new_x * new_x + new_y*new_y > bound_radius * bound_radius) 
+        z_negative = z_negative * -1
+      bound_x += event.movementX * scale * x_heading
+      bound_y +=  event.movementY * scale * y_heading
     }
   })
 
@@ -948,15 +953,20 @@ function rotateAroundBody (vao_group, index, rotation_center) {
     vao_group.getOrbitSpeed(index) * solarsystem_speed_scale * (Math.PI / 180))
 
     if (bound_camera_mode && bound_obj_index == index) {  
-        if (bound_x * bound_x >= bound_radius * bound_radius) {
-          let negative_val = 1
-          if (bound_x < 0)
-            negative_val = -1
-          bound_x = bound_radius * negative_val
+      //bound_y = -1
+        if (bound_x * bound_x + bound_y * bound_y >= bound_radius * bound_radius) {
+          console.log ("SHITS FUCKED")
+          //bound_x += .01 * x_heading
         }
-        bound_z = Math.sqrt (bound_radius*bound_radius - 
-        bound_x*bound_x - bound_y*bound_y) * z_negative
+        bound_z = Math.sqrt (bound_radius*bound_radius - bound_x*bound_x - bound_y*bound_y) * z_negative
         let move_sphere =  new Vector3 (-bound_x, -bound_y, -bound_z)
+        console.log ("sphere= "+move_sphere)
+        console.log ("eq= rad(" + (bound_radius*bound_radius) + " - " + (bound_x * bound_x) + " - " + bound_y*bound_y+")")
+        console.log ("x= "+bound_x*-1)
+        console.log ("y= "+bound_y*-1)
+        console.log ("z= "+bound_z*-1)
+        console.log ("_____________________________________")
+
         let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
         let p_position = move_sphere.add (center)
 
