@@ -23,6 +23,7 @@ let moveDelta = 5
 let turnDelta = 1
 let then = 0
 
+let nums = ['1', '2', '3', '4', '5', '6', '7', '8']
 
 // SKYBOX
 let skyboxShaderProgram
@@ -87,12 +88,12 @@ let show_hitboxes = false
 let bound_camera_mode = false
 let bound_x = 0
 let bound_y = 0
-let bound_theta = 0
-let bound_phi = 0
 let bound_z = 0
 let bound_radius = 1
 let bound_vao_index
 let bound_obj_index
+let x_heading = 1
+let z_negative = 1
 
 // KEYPRESSES
 let keysPressed = {
@@ -177,7 +178,7 @@ function render(k) {
 
   shaderProgram.setUniform3f('specularColor', .8, .9, .1)
   shaderProgram.setUniform3f('diffuseColor', .9, .9, .9)
-  shaderProgram.setUniform1f('shininess', 1000000)
+  shaderProgram.setUniform1f('shininess', 100000000)
   shaderProgram.setUniform1f('ambientFactor', .3)
   shaderProgram.setUniform1i("depthTexture", 0);
   //for (let k = 0; k < 6; k++) 
@@ -476,7 +477,6 @@ void main() {
   vec4 texPosition = mixTexPosition / mixTexPosition.w;
   float fragmentDepth = texPosition.z - 0.0005;
   float closestDepth = texture(depthTexture, texPosition.xy).r;
-  //float shadowFactor = closestDepth < fragmentDepth ? 0.5 : 1.0;
   
   float percentage = 0.0;
   for (int y = -1; y <= 1; y += 1) {
@@ -530,9 +530,15 @@ void main() {
     }
     else if (document.pointerLockElement && bound_camera_mode)
     {
-      let scale = .1
-      bound_theta += event.movementY * scale
-      bound_phi += event.movementX * scale
+      let scale = .01
+      bound_x += event.movementX * scale * x_heading
+      //bound_y += event.movementY * scale
+      if (bound_x * bound_x + bound_y*bound_y > bound_radius * bound_radius) 
+      {
+        x_heading = x_heading * -1
+        z_negative = z_negative * -1
+      }
+      
     }
   })
 
@@ -796,9 +802,6 @@ function createObject(lines) {
 
 // REWRITE AND RENAME
 function rotateInteractables(now) {
-
-
-
   // CHECK GRAVITY
   let ship = objects[0]
   let ship_distance = checkSphereDistance (ship, objectPositions[0]);
@@ -879,6 +882,7 @@ function rotateInteractables(now) {
       }
     }
   }
+
   // LOG FPS
   now *= 0.001;                          // convert to seconds
   const deltaTime = now - then;          // compute time since last frame
@@ -896,7 +900,8 @@ function rotateInteractables(now) {
 
 /**
  * checks for distance between points in 3d space
- * @param {} object 
+ * @param {Trimesh} object 
+ * @param {Matrix4} o_pos
  * @returns 
  */
 function checkSphereDistance (object, o_pos) {
@@ -942,23 +947,28 @@ function rotateAroundBody (vao_group, index, rotation_center) {
   vao_group.addToOrbitTheta (index,
     vao_group.getOrbitSpeed(index) * solarsystem_speed_scale * (Math.PI / 180))
 
-    if (bound_camera_mode && bound_obj_index == index) {
-      let local_phi = bound_phi * (Math.PI / 180)
-      let local_theta = bound_theta * (Math.PI / 180)
-      bound_z = bound_radius * Math.cos (local_phi)
-      bound_x = bound_radius * Math.sin (local_phi) * Math.cos (local_theta)
-      bound_y = bound_radius * Math.sin (local_phi) * Math.sin (local_theta)
-      let move_sphere =  new Vector3 (-bound_x, -bound_y, -bound_z)
-      let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
-      let p_position = move_sphere.add (center)
-      camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), .01)
+    if (bound_camera_mode && bound_obj_index == index) {  
+        if (bound_x * bound_x >= bound_radius * bound_radius) {
+          let negative_val = 1
+          if (bound_x < 0)
+            negative_val = -1
+          bound_x = bound_radius * negative_val
+        }
+        bound_z = Math.sqrt (bound_radius*bound_radius - 
+        bound_x*bound_x - bound_y*bound_y) * z_negative
+        let move_sphere =  new Vector3 (-bound_x, -bound_y, -bound_z)
+        let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
+        let p_position = move_sphere.add (center)
+
+        camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), .01)
     }
 
 }
 
 
 /**
- * Checks if an inputed object is within bounding box of any iterable object
+ * Checks if an inputed object is within an unaligned bounding box
+ *  of any iterable object
  * @param {*} object 
  * @returns 
  */
@@ -1099,8 +1109,8 @@ function onKeyDown(event) {
     if (bound_camera_mode && bound_obj_index == earth_index) {
       bound_obj_index = moon_index
       bound_radius = 1 + .2727
-      bound_phi = 0
-      bound_theta = 0
+      bound_x = 0
+      bound_y = 0
       return
     }
 
@@ -1108,8 +1118,6 @@ function onKeyDown(event) {
     bound_radius = 1.5 + 1 
     bound_vao_index = celestial_bodies_index
     bound_obj_index = earth_index
-    bound_phi = 0
-    bound_theta = 0
   } if (event.key == '1') {
     teleportToObject (celestial_bodies_index, mecury_index)
 
@@ -1121,8 +1129,6 @@ function onKeyDown(event) {
     bound_radius = 1.5 + .383 
     bound_vao_index = celestial_bodies_index
     bound_obj_index = mecury_index
-    bound_phi = 0
-    bound_theta = 0
   }
   if (event.key == '2') {
     teleportToObject (celestial_bodies_index, venus_index)
@@ -1134,8 +1140,6 @@ function onKeyDown(event) {
     bound_radius = 1.5 + .95 
     bound_vao_index = celestial_bodies_index
     bound_obj_index = venus_index
-    bound_phi = 0
-    bound_theta = 0
   }
   if (event.key == '4') {
     teleportToObject (celestial_bodies_index, mars_index)
@@ -1147,8 +1151,6 @@ function onKeyDown(event) {
     bound_radius = 1.5 + .532
     bound_vao_index = celestial_bodies_index
     bound_obj_index = mars_index
-    bound_phi = 0
-    bound_theta = 0
   }
   if (event.key == '5') {
     teleportToObject (celestial_bodies_index, juipter_index)
@@ -1160,8 +1162,6 @@ function onKeyDown(event) {
     bound_radius = 1.5 + 11.21
     bound_vao_index = celestial_bodies_index
     bound_obj_index = juipter_index
-    bound_phi = 0
-    bound_theta = 0
   }
   if (event.key == '6') {
     teleportToObject (celestial_bodies_index, saturn_index)
@@ -1173,8 +1173,6 @@ function onKeyDown(event) {
     bound_radius = 1.5 + 9.45
     bound_vao_index = celestial_bodies_index
     bound_obj_index = saturn_index
-    bound_phi = 0
-    bound_theta = 0
   }
   if (event.key == '7') {
     teleportToObject (celestial_bodies_index, uranus_index)
@@ -1186,8 +1184,6 @@ function onKeyDown(event) {
     bound_radius = 1.5 + 3.98
     bound_vao_index = celestial_bodies_index
     bound_obj_index = uranus_index
-    bound_phi = 0
-    bound_theta = 0
   }
   if (event.key == '8') {
     teleportToObject (celestial_bodies_index, neptune_index)
@@ -1199,9 +1195,13 @@ function onKeyDown(event) {
     bound_radius = 1.5 + 3.86
     bound_vao_index = celestial_bodies_index
     bound_obj_index = neptune_index
-    bound_phi = 0
-    bound_theta = 0
   }
+
+  if (nums.includes (event.key)) {
+    bound_x = 0
+    bound_y = 0
+  }
+    
 }
 /**
  * Removes keypressed if key is pushed up

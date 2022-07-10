@@ -17,6 +17,9 @@ export class Vector4 {
   get z() {
     return this.coordinates[2]
   }
+  get h() {
+    return this.coordinates[3]
+  }
   get xyz () {
     return new Vector3 (this.coordinates[0], this.coordinates[1], this.coordinates[2])
   }

@@ -1,4 +1,4 @@
-import { Vector3 } from './vector'
+import { Vector3, Vector4 } from './vector'
 import {Matrix4} from './matrix'
 
 // REQURES VEC3s INTERANLLY TO FUNCTION
@@ -276,7 +276,7 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     for (let i = 0; i < num_objects; i++)
     {
       this.translations.push (new Vector3 (0,0,0))
-      this.rotations.push (new Vector3 (0,0,0))
+      this.rotations.push (new Vector4 (0,0,0,0))
       this.scales.push (new Vector3 (0,0,0))
       this.radii.push (-1)
       this.rotation_speed.push (-1)
@@ -359,6 +359,13 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     this.rotations[index].set (1, degree + this.rotations[index].y)
   }
 
+  setRotationCenter (index, degree) {
+    this.rotations[index].set (3, degree)
+  }
+
+  addToRotationCenter (index, degree) {
+    this.rotations[index].set (3, degree + this.rotations[index].h)
+  }
   /**
  * sets rotation along x ais
  * @param {*} index 
@@ -396,7 +403,11 @@ export class TrimeshVaoGrouping extends TrimeshVao {
       rotationM = rotationM.multiplyMatrix (Matrix4.rotateY(rotation.y))
     if (rotation.z != 0)
       rotationM = rotationM.multiplyMatrix (Matrix4.rotateZ(rotation.z))
-
+    if (rotation.h != 0) {
+      let degree = rotation.h
+      rotationM = rotationM.multiplyMatrix (
+      Matrix4.rotateAroundAxis(new Vector4(this.centroid.normalize(), degree)))
+    }
     let translationM = Matrix4.translate (translation.x, 
       translation.y, translation.z)
     
