@@ -10,8 +10,9 @@ import { Camera, SlideCamera } from './camera'
 import { reserveDepthCubeTexture, initializeDepthProgram, createTexture2d, initializeDepthFbo, reserveDepthTexture} from './shadow'
 import {readBoxen, generateCube} from './box_gen'
 import { generateSkybox, loadCubemap, skybox_shader_program, ship_shader} from './skybox'
-import { Trackball } from './trackball'
 import { generateSphere } from './sphere.js'
+import { SpaceObject } from './SpaceObject.js'
+
 
 let canvas
 let attributes
@@ -95,6 +96,8 @@ let bound_obj_index
 let x_heading = 1
 let y_heading = 1
 let z_negative = 1
+let distance_multipler = 1
+let base_distance_offset = .5
 
 // KEYPRESSES
 let keysPressed = {
@@ -585,9 +588,11 @@ async function initInteractables() {
   spheres.setTranslation (sun_index, offset)
   spheres.setScale (sun_index, new Vector3 (109.29,109.29,109.29).scalarMultiply (solarsystem_scale))
   interactables.push (spheres)
-  
+  let sun = new SpaceObject (sun_index, .01, 0, 0, 0, null)
+  interactables[celestial_bodies_index].addToObjects (sun)
   lightPosition = interactables[celestial_bodies_index].buildMatrix(sun_index)
     .multiplyVector (interactables[0].centroid).xyz
+
 
   /* 
   let lines = await readObjFromFile(name);
@@ -616,57 +621,57 @@ async function initInteractables() {
   interactables.push(interactable)
   */
   // SET EARTH IN PLANET TRI VAO GROUP
-  let planets = interactables[celestial_bodies_index]
   earth_index = sun_index + 1
   let rotation = new Vector3 (0, 0, 23.5)
-  setTriVaoGroupObj (celestial_bodies_index, earth_index, 
-    1, offset, rotation, 23872, .00273, 1)
+  let earth = setTriVaoGroupObj (celestial_bodies_index, earth_index, 
+    1, offset, rotation, 23872, .00273, 1, sun)
   // GENERATE MOON
   moon_index = earth_index + 1
   rotation = new Vector3 (0, 0, 1.5)
   setTriVaoGroupObj (celestial_bodies_index, moon_index, 
-    .2727, offset, rotation, 356, .0366, .0339)
+    .2727, offset, rotation, 356, .0366, .0339, earth)
   // GENERATE MECURY
   mecury_index = moon_index + 1
   rotation = new Vector3 (0, 0, 2)
   setTriVaoGroupObj (celestial_bodies_index, mecury_index, 
-    .383, offset, rotation, 9093, .0114, .0057)
+    .383, offset, rotation, 9093, .0114, .0057, sun)
   // GENERATE VENUS
   venus_index = mecury_index + 1
   rotation = new Vector3 (0, 0, 3)
   setTriVaoGroupObj (celestial_bodies_index, venus_index, 
-    .95, offset, rotation, 17003, .0045, .0086)
+    .95, offset, rotation, 17003, .0045, .0086, sun)
   // GENERATE MARS
   mars_index = venus_index + 1
   rotation = new Vector3 (0, 0, 25.19)
   setTriVaoGroupObj (celestial_bodies_index, mars_index, .532, offset,
-     rotation, 32657, .0015, .972)
+     rotation, 32657, .0015, .972, sun)
   // GENERATE JUIPTER
   juipter_index = mars_index + 1
   rotation = new Vector3 (0, 0, 3.13)
   setTriVaoGroupObj (celestial_bodies_index, juipter_index,  11.21, offset,
-     rotation, 116549, .00023, 2.424)
+     rotation, 116549, .00023, 2.424, sun)
   // GENERATE SATURN
   saturn_index = juipter_index + 1
   rotation = new Vector3 (0, 0, 26.73)
   setTriVaoGroupObj (celestial_bodies_index, saturn_index, 
-    9.45, offset, rotation, 231608, 0.000093, 2.243)
+    9.45, offset, rotation, 231608, 0.000093, 2.243, sun)
   // GENERATE  URANUS
   uranus_index = saturn_index + 1
   rotation = new Vector3 (0, 0, 82.23)
   setTriVaoGroupObj (celestial_bodies_index, uranus_index, 
-    3.98, offset, rotation, 462338, .000033, 1.4)
+    3.98, offset, rotation, 462338, .000033, 1.4, sun)
   // GENERATE NEPTUNE
   neptune_index = uranus_index + 1
   rotation = new Vector3 (0, 0, 28.32)
   setTriVaoGroupObj (celestial_bodies_index, neptune_index, 
-    3.86, offset, rotation, 702222, .000017, 1.491)
+    3.86, offset, rotation, 702222, .000017, 1.491, sun)
   // GENERATE HITBOXES
   generateVisualHitBoxes()
 
 }
 
-/**
+
+   /**
  * constructs 1 obj in trivao grouping.
  * @param {int} group_index 
  * @param {int} obj_index 
@@ -676,20 +681,25 @@ async function initInteractables() {
  * @param {float} radius 
  * @param {float} orbit_speed 
  * @param {float} rotation_speed 
+ * @param {SpaceObject} parent
+ * 
+ * @return {SpaceObject}
  */
 function setTriVaoGroupObj (group_index, obj_index, scale, translation, rotation,
-   radius, orbit_speed, rotation_speed) {
+  radius, orbit_speed, rotation_speed, parent) 
+  {
     let group = interactables[group_index]
     group.setScale (obj_index, new Vector3 (scale, scale, scale).scalarMultiply (solarsystem_scale))
     group.setTranslation (obj_index, translation)
     group.setRotationX (obj_index, -rotation.x)
     group.setRotationY (obj_index, -rotation.y)
     group.setRotationZ (obj_index, -rotation.z)
-    group.setRadius (obj_index, radius)
-    group.setOrbitSpeed (obj_index, orbit_speed)
-    group.setRotationSpeed (obj_index, rotation_speed)
+    let obj = new SpaceObject (obj_index, rotation_speed, orbit_speed,
+      radius, 0, parent)
+    parent.addSatellite (obj)
     //group.setOrbitTheta (obj_index, 2 * Math.PI * Math.random())
-   }
+    return obj
+  }
 
 /**
  * Generates an physical physical sphere obejct
@@ -823,33 +833,12 @@ function rotateInteractables(now) {
     camera.end_point = camera.end_point.add (gravity_direction)
   }
 
-  // MOVE EARTH AROUND SUN
-  let sun_center = lightPosition
-  let earth = interactables[celestial_bodies_index]
-  rotateAroundBody (interactables[celestial_bodies_index], earth_index, sun_center)
-  
-  // HAVE LIGHT FACE EARTH
-  let earth_position = earth.buildMatrix (earth_index)
-  let earth_center = earth_position.multiplyVector (earth.centroid)
-  
-  lightTarget = earth_center.xyz
-  // MOVE MOON AROUND EARTH
-  // *** NOTE: Make sure to tilt moon axis o rotation 6.whatever degrees ***
-  rotateAroundBody (interactables[celestial_bodies_index], moon_index, earth_center)
-  // MOVE MECURY AROUND SUN
-  rotateAroundBody (interactables[celestial_bodies_index], mecury_index, sun_center)
-  // MOVE VENUS AROUND SUN
-  rotateAroundBody (interactables[celestial_bodies_index], venus_index, sun_center)
-  // MOVE MARS AROUND SUN
-  rotateAroundBody (interactables[celestial_bodies_index], mars_index, sun_center)
-  // MOVE JUIPTER AROUND EARTH
-  rotateAroundBody (interactables[celestial_bodies_index], juipter_index, sun_center)
-  // MOVE SATURN AROUND EARTH
-  rotateAroundBody (interactables[celestial_bodies_index], saturn_index, sun_center)
-  // MOVE URANUS AROUND EARTH
-  rotateAroundBody (interactables[celestial_bodies_index], uranus_index, sun_center)
-  // MOVE NEPTUNE AROUND EARTH
-  rotateAroundBody (interactables[celestial_bodies_index], neptune_index, sun_center)
+
+  rotateAllBodies (interactables[celestial_bodies_index].getObject(sun_index),
+   interactables[celestial_bodies_index]) 
+  lightTarget =   interactables[celestial_bodies_index]
+    .buildMatrix (earth_index).multiplyVector (interactables[celestial_bodies_index]
+    .centroid).xyz
 
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
@@ -871,20 +860,6 @@ function rotateInteractables(now) {
   else {
     // MOVE PLAYER
     camera.timeStepMove()
-    // ROTATE OBJECTS
-    for (let i = 0; i < interactables.length; i++) {
-      const interactable = interactables[i]
-      for (let j = 0; j < interactable.num_objects; j++) {
-        if (i == celestial_bodies_index && j == sun_index)
-          continue
-        else if (i == celestial_bodies_index) {
-          interactable.addToRotationY (j,
-            interactable.getRotationSpeed(j) * solarsystem_speed_scale)
-        }
-        else
-          interactable.addToRotationY (j, .1)
-      }
-    }
   }
 
   // LOG FPS
@@ -932,42 +907,50 @@ function forceOfGravity (distance, mass_impact) {
   return force
 } 
 
+
 /**
- * rotates object around center body
- * @param {TrimeshVaoGrouping} vao_group 
- * @param {int} index 
- * @param {float} radius 
- * @param {float} theta 
- * @param {vec3} rotation_center 
+ * rotates all objects which are satellites of space_obj
+ * @param {SpaceObject} space_obj
+ * @param {TrimeshVaoGrouping} vao_group
  */
-function rotateAroundBody (vao_group, index, rotation_center) {
-  let scaled_radius = vao_group.getRadius(index) * solarsystem_scale
-  let theta = vao_group.getOrbitTheta(index)
+ function rotateAllBodies (space_obj, vao_group) {
+  if (space_obj.num_satellites != 0 && space_obj.satellites != null) {
+    for (let i = 0; i < space_obj.num_satellites; i++) {
+      rotateAllBodies (space_obj.getSatellite(i), vao_group)
+    }
+  }
+  if (space_obj.parent == null)
+    return
+  
+  let rotation_center = vao_group.buildMatrix (space_obj.parent.index)
+    .multiplyVector (vao_group.centroid)
+  let index = space_obj.index
+  let scaled_radius = space_obj.orbit_radius * solarsystem_scale
+  let theta = space_obj.orbit_theta
   let new_x = Math.cos (theta) * scaled_radius
   let new_z = Math.sin (theta) * scaled_radius
   let new_pos = new Vector3 (new_x, 0, new_z)
   new_pos = new_pos.add (rotation_center)
-  vao_group.setTranslation (index, new_pos)
-  vao_group.addToOrbitTheta (index,
-  vao_group.getOrbitSpeed(index) * solarsystem_speed_scale * (Math.PI / 180))
-
-    if (bound_camera_mode && bound_obj_index == index) {
-        if (bound_x * bound_x + bound_y * bound_y >= bound_radius*bound_radius)  {
-          console.log ("AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH IMAGINARY #s")
-          //while (true){}
-          bound_x = 0
-          bound_y = 0
-        }
-        bound_z = Math.sqrt (bound_radius*bound_radius - bound_x*bound_x - bound_y*bound_y) * z_negative
-        let move_sphere =  new Vector3 (-bound_x, -bound_y, -bound_z)
-
-        let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
-        let p_position = move_sphere.add (center)
-
-        camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), .005)
+  vao_group.setTranslation (space_obj.index, new_pos)
+  space_obj.orbit_theta += space_obj.orbit_speed 
+    * solarsystem_speed_scale * (Math.PI/180)
+  // place camera in new path of obj
+  vao_group.addToRotationY (index, space_obj.rotation_speed * solarsystem_speed_scale)
+  if (bound_camera_mode && bound_obj_index == index) {
+    if (bound_x * bound_x + bound_y * bound_y >= bound_radius*bound_radius)
+    {
+      bound_x = 0
+      bound_y = 0
     }
+    bound_z = Math.sqrt (bound_radius*bound_radius - bound_x*bound_x - bound_y*bound_y) * z_negative
+    let move_sphere =  new Vector3 (-bound_x, -bound_y, -bound_z)
+    let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
+    let p_position = move_sphere.add (center)
+    camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), .005)
+  }
 
 }
+
 
 
 /**
@@ -1112,14 +1095,14 @@ function onKeyDown(event) {
     }
     if (bound_camera_mode && bound_obj_index == earth_index) {
       bound_obj_index = moon_index
-      bound_radius = .2727 * 1.5
+      bound_radius = .2727 * distance_multipler + base_distance_offset
       bound_x = 0
       bound_y = 0
       return
     }
 
     bound_camera_mode = true
-    bound_radius = 1*1.5
+    bound_radius = 1 * distance_multipler + base_distance_offset
     bound_vao_index = celestial_bodies_index
     bound_obj_index = earth_index
   } if (event.key == '1') {
@@ -1130,7 +1113,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = .383 * 1.5
+    bound_radius = .383 * distance_multipler + base_distance_offset
     bound_vao_index = celestial_bodies_index
     bound_obj_index = mecury_index
   }
@@ -1141,7 +1124,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius =  .95 * 1.5
+    bound_radius =  .95 * distance_multipler + base_distance_offset
     bound_vao_index = celestial_bodies_index
     bound_obj_index = venus_index
   }
@@ -1152,7 +1135,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = .532 * 1.5
+    bound_radius = .532 * distance_multipler + base_distance_offset
     bound_vao_index = celestial_bodies_index
     bound_obj_index = mars_index
   }
@@ -1163,7 +1146,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = 11.21 * 1.5
+    bound_radius = 11.21 * distance_multipler + base_distance_offset
     bound_vao_index = celestial_bodies_index
     bound_obj_index = juipter_index
   }
@@ -1174,7 +1157,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = 9.45 * 1.5
+    bound_radius = 9.45 * distance_multipler + base_distance_offset
     bound_vao_index = celestial_bodies_index
     bound_obj_index = saturn_index
   }
@@ -1185,7 +1168,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = 3.98 * 1.5
+    bound_radius = 3.98 * distance_multipler + base_distance_offset
     bound_vao_index = celestial_bodies_index
     bound_obj_index = uranus_index
   }
@@ -1196,7 +1179,7 @@ function onKeyDown(event) {
       return
     }
     bound_camera_mode = true
-    bound_radius = 3.86 * 1.5
+    bound_radius = 3.86 * distance_multipler + base_distance_offset
     bound_vao_index = celestial_bodies_index
     bound_obj_index = neptune_index
   }
