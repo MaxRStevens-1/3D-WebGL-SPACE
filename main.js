@@ -533,17 +533,16 @@ void main() {
     {
       let scale = bound_radius * .001
       let new_x = bound_x + event.movementX * scale * x_heading
-      let new_y = bound_y + event.movementY * scale * y_heading
+      bound_y +=  event.movementY * scale * y_heading
+      if (bound_y * bound_y + bound_x * bound_x >= bound_radius*bound_radius) {
+        bound_y -= event.movementY * scale * y_heading
+      }
       if (new_x*new_x + bound_y * bound_y >= bound_radius * bound_radius) {
         x_heading = x_heading * -1
       }
-      if (new_y * new_y + bound_x * bound_x >= bound_radius*bound_radius) {
-        y_heading = y_heading * -1
-      }
-      if (new_x * new_x + new_y*new_y >= bound_radius * bound_radius) 
+      if (new_x * new_x + bound_y*bound_y >= bound_radius * bound_radius) 
         z_negative = z_negative * -1
       bound_x += event.movementX * scale * x_heading
-      bound_y +=  event.movementY * scale * y_heading
     }
   })
 
@@ -683,9 +682,9 @@ function setTriVaoGroupObj (group_index, obj_index, scale, translation, rotation
     let group = interactables[group_index]
     group.setScale (obj_index, new Vector3 (scale, scale, scale).scalarMultiply (solarsystem_scale))
     group.setTranslation (obj_index, translation)
-    group.setRotationX (obj_index, rotation.x)
-    group.setRotationY (obj_index, rotation.y)
-    group.setRotationZ (obj_index, rotation.z)
+    group.setRotationX (obj_index, -rotation.x)
+    group.setRotationY (obj_index, -rotation.y)
+    group.setRotationZ (obj_index, -rotation.z)
     group.setRadius (obj_index, radius)
     group.setOrbitSpeed (obj_index, orbit_speed)
     group.setRotationSpeed (obj_index, rotation_speed)
