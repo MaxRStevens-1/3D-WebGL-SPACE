@@ -24,8 +24,6 @@ let moveDelta = 5
 let turnDelta = 1
 let then = 0
 
-let nums = ['1', '2', '3', '4', '5', '6', '7', '8']
-
 // SKYBOX
 let skyboxShaderProgram
 let skyboxVao
@@ -943,7 +941,7 @@ function forceOfGravity (distance, mass_impact) {
       bound_y = 0
     }
     bound_z = Math.sqrt (bound_radius*bound_radius - bound_x*bound_x - bound_y*bound_y) * z_negative
-    let move_sphere =  new Vector3 (-bound_x, -bound_y, -bound_z)
+    let move_sphere =  new Vector3 (bound_x, bound_y, -bound_z)
     let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
     let p_position = move_sphere.add (center)
     camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), .005)
@@ -1018,7 +1016,8 @@ function checkCollision (object) {
 }
 
 /** 
- * sees if one object is within bounding box of any other object
+ * assumes bounding boxes are axis aligned
+ * checks if one bb lies within all other bbs
  * @param {*} input_obj
  * @param {*} pos_mat
  * @returns T if is within BB, F if not
@@ -1048,6 +1047,15 @@ function checkObjectToObjectCollision (input_obj, pos_mat) {
   return false;
 }
 
+function setPlanetBoundCamera (vao_index, obj_index, radius) {
+  bound_x = 0
+  bound_y = 0
+  bound_vao_index = vao_index
+  bound_obj_index = obj_index
+  bound_radius = radius * distance_multipler + base_distance_offset
+  bound_camera_mode = true
+
+}
 
 /**
  * Handles player inputs when a key is pressed down
@@ -1084,8 +1092,27 @@ function onKeyDown(event) {
     camera.advance (40)
     camera.end_point = camera.position
   } if (event.key == 'l')
-    console.log ("playerpos=" +camera.position)
+    console.log ("playerpos=" + camera.position)
   // teleports to planets with # key, corresponding to planet position 2 sun
+  if (event.key == '1') {
+    teleportToObject (celestial_bodies_index, mecury_index)
+
+    if (bound_camera_mode && bound_obj_index == mecury_index) {
+      bound_camera_mode = false
+      return
+    }
+    setPlanetBoundCamera (celestial_bodies_index, mecury_index, .383)
+
+  }
+  if (event.key == '2') {
+    teleportToObject (celestial_bodies_index, venus_index)
+    if (bound_camera_mode && bound_obj_index == venus_index) {
+      bound_camera_mode = false
+      return
+    }
+    setPlanetBoundCamera (celestial_bodies_index, venus_index, .95)
+
+  }
   if (event.key == '3') {
     teleportToObject (celestial_bodies_index, earth_index)
     if (bound_camera_mode && bound_obj_index == moon_index)
@@ -1094,50 +1121,19 @@ function onKeyDown(event) {
       return
     }
     if (bound_camera_mode && bound_obj_index == earth_index) {
-      bound_obj_index = moon_index
-      bound_radius = .2727 * distance_multipler + base_distance_offset
-      bound_x = 0
-      bound_y = 0
+      setPlanetBoundCamera (celestial_bodies_index, moon_index, .2727)
       return
     }
 
     bound_camera_mode = true
-    bound_radius = 1 * distance_multipler + base_distance_offset
-    bound_vao_index = celestial_bodies_index
-    bound_obj_index = earth_index
-  } if (event.key == '1') {
-    teleportToObject (celestial_bodies_index, mecury_index)
-
-    if (bound_camera_mode && bound_obj_index == mecury_index) {
-      bound_camera_mode = false
-      return
-    }
-    bound_camera_mode = true
-    bound_radius = .383 * distance_multipler + base_distance_offset
-    bound_vao_index = celestial_bodies_index
-    bound_obj_index = mecury_index
-  }
-  if (event.key == '2') {
-    teleportToObject (celestial_bodies_index, venus_index)
-    if (bound_camera_mode && bound_obj_index == venus_index) {
-      bound_camera_mode = false
-      return
-    }
-    bound_camera_mode = true
-    bound_radius =  .95 * distance_multipler + base_distance_offset
-    bound_vao_index = celestial_bodies_index
-    bound_obj_index = venus_index
-  }
-  if (event.key == '4') {
+    setPlanetBoundCamera (celestial_bodies_index, earth_index, 1)
+  } if (event.key == '4') {
     teleportToObject (celestial_bodies_index, mars_index)
     if (bound_camera_mode && bound_obj_index == mars_index) {
       bound_camera_mode = false
       return
     }
-    bound_camera_mode = true
-    bound_radius = .532 * distance_multipler + base_distance_offset
-    bound_vao_index = celestial_bodies_index
-    bound_obj_index = mars_index
+    setPlanetBoundCamera (celestial_bodies_index, mars_index, .532)
   }
   if (event.key == '5') {
     teleportToObject (celestial_bodies_index, juipter_index)
@@ -1145,10 +1141,8 @@ function onKeyDown(event) {
       bound_camera_mode = false
       return
     }
-    bound_camera_mode = true
-    bound_radius = 11.21 * distance_multipler + base_distance_offset
-    bound_vao_index = celestial_bodies_index
-    bound_obj_index = juipter_index
+    setPlanetBoundCamera (celestial_bodies_index, juipter_index, 11.21)
+
   }
   if (event.key == '6') {
     teleportToObject (celestial_bodies_index, saturn_index)
@@ -1156,10 +1150,7 @@ function onKeyDown(event) {
       bound_camera_mode = false
       return
     }
-    bound_camera_mode = true
-    bound_radius = 9.45 * distance_multipler + base_distance_offset
-    bound_vao_index = celestial_bodies_index
-    bound_obj_index = saturn_index
+    setPlanetBoundCamera (celestial_bodies_index, saturn_index, 9.45)
   }
   if (event.key == '7') {
     teleportToObject (celestial_bodies_index, uranus_index)
@@ -1167,10 +1158,7 @@ function onKeyDown(event) {
       bound_camera_mode = false
       return
     }
-    bound_camera_mode = true
-    bound_radius = 3.98 * distance_multipler + base_distance_offset
-    bound_vao_index = celestial_bodies_index
-    bound_obj_index = uranus_index
+    setPlanetBoundCamera (celestial_bodies_index, uranus_index, 3.98)
   }
   if (event.key == '8') {
     teleportToObject (celestial_bodies_index, neptune_index)
@@ -1178,16 +1166,9 @@ function onKeyDown(event) {
       bound_camera_mode = false
       return
     }
-    bound_camera_mode = true
-    bound_radius = 3.86 * distance_multipler + base_distance_offset
-    bound_vao_index = celestial_bodies_index
-    bound_obj_index = neptune_index
+    setPlanetBoundCamera (celestial_bodies_index, neptune_index, 3.86)
   }
 
-  if (nums.includes (event.key)) {
-    bound_x = 0
-    bound_y = 0
-  }
     
 }
 /**
