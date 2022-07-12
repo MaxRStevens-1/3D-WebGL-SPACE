@@ -663,10 +663,25 @@ async function initInteractables() {
   rotation = new Vector3 (0, 0, 28.32)
   setTriVaoGroupObj (celestial_bodies_index, neptune_index, 
     3.86, offset, rotation, 702222, .000017, 1.491, sun)
+  
+  setSatelliteHashTable (sun)
   // GENERATE HITBOXES
   generateVisualHitBoxes()
 
 }
+
+function setSatelliteHashTable (obj) {
+  let local_map = new Map()
+  if (obj.num_satellites != 0 && obj.satellites != null) {
+    for (let i = 0; i < obj.num_satellites; i++) {
+      local_map.set (obj.getSatellite(i).index, obj.getSatellite(i))
+      local_map = new Map([...setSatelliteHashTable(obj.getSatellite(i)), ...local_map])
+    }
+  }
+  console.log (local_map)
+  obj.satellite_map = local_map
+  return local_map
+} 
 
 
    /**
@@ -693,7 +708,7 @@ function setTriVaoGroupObj (group_index, obj_index, scale, translation, rotation
     group.setRotationY (obj_index, -rotation.y)
     group.setRotationZ (obj_index, -rotation.z)
     let obj = new SpaceObject (obj_index, rotation_speed, orbit_speed,
-      radius, 0, parent)
+      radius, 0, scale*2, parent)
     parent.addSatellite (obj)
     //group.setOrbitTheta (obj_index, 2 * Math.PI * Math.random())
     return obj
@@ -816,27 +831,15 @@ function createObject(lines) {
 function rotateInteractables(now) {
   // CHECK GRAVITY
   let ship = objects[0]
-  let ship_distance = checkSphereDistance (ship, objectPositions[0]);
-  if (ship_distance <= 2000 && ship_distance >= 20)  {
-    // MOVE PLAYER WITH FORCE OF GRAVITY
-    // calculate force of gravity
-    let force = forceOfGravity (ship_distance, 100000)
-    // calculate unit vector between pointing from ship to sphere
-    // B - A / | B - A |
-    let sphere = interactables[celestial_bodies_index]
-    let sphere_center = sphere.buildMatrix (earth_index).multiplyVector (sphere.centroid).xyz
-    let ship_center = objectPositions[0].multiplyVector (ship.centroid).xyz
-    let gravity_direction = sphere_center.add(ship_center.inverse())
-                            .normalize().scalarMultiply(force)
-    camera.end_point = camera.end_point.add (gravity_direction)
+  let spheres = interactables[celestial_bodies_index]
+  if (!bound_camera_mode) {
+    let sun = interactables[celestial_bodies_index].getObject(sun_index)
+    let ship_center = objectPositions[0].multiplyVector(ship.centroid).xyz
+    gravityUpdate (sun, spheres, ship, objectPositions[0], ship_center)
   }
 
-
-  rotateAllBodies (interactables[celestial_bodies_index].getObject(sun_index),
-   interactables[celestial_bodies_index]) 
-  lightTarget =   interactables[celestial_bodies_index]
-    .buildMatrix (earth_index).multiplyVector (interactables[celestial_bodies_index]
-    .centroid).xyz
+  rotateAllBodies (spheres.getObject(sun_index), spheres) 
+  lightTarget = spheres.buildMatrix (earth_index).multiplyVector (spheres.centroid).xyz
 
   // OFFSETS ON SCREEN
   let ship_offset_x = 17
@@ -865,7 +868,7 @@ function rotateInteractables(now) {
   const deltaTime = now - then;          // compute time since last frame
   then = now;                            // remember time for next frame
   const fps = 1 / deltaTime;             // compute frames per second
-  if (fps < 29)
+  if (fps < 58)
     console.log (fps)
   // RENDER AND REQUEST 2 DRAW
   getTextFromWorld ()
@@ -879,18 +882,54 @@ function rotateInteractables(now) {
  * checks for distance between points in 3d space
  * @param {Trimesh} object 
  * @param {Matrix4} o_pos
+ * @param {int} index
  * @returns 
  */
-function checkSphereDistance (object, o_pos) {
+function checkSphereDistance (object, o_pos, index, 
+  obj_center) {
   let sphere = interactables[celestial_bodies_index]
-  let s_pos = sphere.buildMatrix(earth_index)//.getMatrix (earth_index)
+  let s_pos = sphere.buildMatrix(index)
 
   let s_point = s_pos.multiplyVector (sphere.centroid)
-  let o_point = o_pos.multiplyVector (object.centroid)
+  let o_point = obj_center //o_pos.multiplyVector (object.centroid)
   let distance = Math.sqrt (Math.pow(s_point.x - o_point.x, 2) 
                             + Math.pow(s_point.y - o_point.y, 2) 
                             + Math.pow(s_point.z - o_point.z, 2)) 
   return distance
+}
+
+/**
+ * 
+ * @param {SpaceObject} parent 
+ * @param {TriVaoGrouping}
+ * @param {Trimesh} ship 
+ * @param {Matrix4} ship_position
+ * @param {Vector3} ship_center
+ */
+function gravityUpdate (parent, trivao_group, ship, ship_position, ship_center) {
+  if (parent.num_satellites > 0 && parent.satellites != null) {
+    for (let i = 0; i < parent.num_satellites; i++) {
+      let sat = parent.getSatellite (i)
+      gravityUpdate (sat, trivao_group, ship, ship_position, ship_center)
+    }
+  }
+  let distance = checkSphereDistance (ship, ship_position, parent.index, ship_center)
+  let check = 2000*parent.diameter*solarsystem_scale
+  if (distance <= 2000 * parent.diameter * solarsystem_scale 
+    && distance >= 20 * solarsystem_scale)
+  {
+    // MOVE PLAYER WITH FORCE OF GRAVITY
+    // calculate force of gravity
+    let force = forceOfGravity (distance, 100, parent.diameter)
+    // calculate unit vector between pointing from ship to sphere
+    // B - A / | B - A |
+    let sphere_center = trivao_group.buildMatrix (parent.index)
+      .multiplyVector (trivao_group.centroid).xyz
+    let gravity_direction = sphere_center.add(ship_center.inverse())
+      .normalize().scalarMultiply(force)
+    console.log ("gravitu="+gravity_direction)
+    camera.end_point = camera.end_point.add (gravity_direction)
+  }
 }
 
 /**
@@ -899,9 +938,9 @@ function checkSphereDistance (object, o_pos) {
  * @param {*} mass_impact 
  * @returns 
  */
-function forceOfGravity (distance, mass_impact) {
-  return 0
-  let force = 1/Math.pow(distance,2) * mass_impact
+function forceOfGravity (distance, mass_impact, radius) {
+  //return 0
+  let force = 1/Math.pow(distance,2) * mass_impact * solarsystem_scale * radius
   return force
 } 
 
@@ -944,7 +983,7 @@ function forceOfGravity (distance, mass_impact) {
     let move_sphere =  new Vector3 (bound_x, bound_y, -bound_z)
     let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
     let p_position = move_sphere.add (center)
-    camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), .005)
+    camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), .05)
   }
 
 }
@@ -1196,7 +1235,7 @@ function teleportToObject (vaogroup_index, obj_index,
     let group = interactables[vaogroup_index]
     let target = group.buildMatrix(obj_index).multiplyVector (group.centroid).xyz
     let position = offset.add (target)
-    camera = new SlideCamera (position, target, new Vector3 (0,1,0),  .005)   
+    camera = new SlideCamera (position, target, new Vector3 (0,1,0),  .05)   
 }
 
 /**
