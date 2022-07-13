@@ -47,4 +47,37 @@ export class SpaceObject {
      * @returns 
      */
     getChild (index) {return this.satellite_map.get(index)}
+
+    /**
+     * Depth first iterator
+     */
+    [Symbol.iterator] () {
+        let current_parent = this
+        let next_obj = 0
+        let previous_idxs = []
+        let children = this.satellites
+        return {
+            next: () => {
+                let result = {value: null, done: true}
+                if (current_parent.parent != null && next_obj >= children.length) {
+                    current_parent = current_parent.parent
+                    children = current_parent.satellites
+                    next_obj = previous_idxs.pop()
+                }
+                if (next_obj < children.length) {
+                    let current_child = children[next_obj]
+                    result = {value: current_child, done: false}
+                    next_obj++
+                    if (current_child.num_satellites > 0) {
+                        current_parent = current_child
+                        children = current_parent.satellites
+                        previous_idxs.push (next_obj)
+                        next_obj = 0
+                    }
+                } 
+                
+                return result
+            }
+        }
+    }
 }

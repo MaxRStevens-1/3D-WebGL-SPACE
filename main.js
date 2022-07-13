@@ -33,7 +33,7 @@ let skyboxVao
 let shipShader
 
 // PLANETS / SUN
-let solarsystem_scale = .02
+let solarsystem_scale = .015
 let solarsystem_speed_scale = 1
 let earth_index
 let moon_index
@@ -94,7 +94,8 @@ let bound_obj_index
 let x_heading = 1
 let z_negative = 1
 let distance_multipler = 1.5
-let base_distance_offset = 10 * solarsystem_scale
+let base_distance_offset = 2
+let bound_object_iterator
 
 // KEYPRESSES
 let keysPressed = {
@@ -623,19 +624,9 @@ async function initInteractables() {
   }
   interactables.push(interactable)
   */
-  // SET EARTH IN PLANET TRI VAO GROUP
-  earth_index = sun_index + 1
-  let rotation = new Vector3 (0, 0, 23.5)
-  let earth = setTriVaoGroupObj (celestial_bodies_index, earth_index, 
-    1, offset, rotation, 23872, .00273, 1, sun, "earth")
-  // GENERATE MOON
-  moon_index = earth_index + 1
-  rotation = new Vector3 (0, 0, 1.5)
-  setTriVaoGroupObj (celestial_bodies_index, moon_index, 
-    .2727, offset, rotation, 356, .0366, .0339, earth, "moon")
   // GENERATE MECURY
-  mecury_index = moon_index + 1
-  rotation = new Vector3 (0, 0, 2)
+  mecury_index = sun_index + 1
+  let rotation = new Vector3 (0, 0, 2)
   setTriVaoGroupObj (celestial_bodies_index, mecury_index, 
     .383, offset, rotation, 9093, .0114, .0057, sun, "mercury")
   // GENERATE VENUS
@@ -643,8 +634,18 @@ async function initInteractables() {
   rotation = new Vector3 (0, 0, 3)
   setTriVaoGroupObj (celestial_bodies_index, venus_index, 
     .95, offset, rotation, 17003, .0045, .0086, sun, "venus")
+  // SET EARTH IN PLANET TRI VAO GROUP
+  earth_index = venus_index + 1
+  rotation = new Vector3 (0, 0, 23.5)
+  let earth = setTriVaoGroupObj (celestial_bodies_index, earth_index, 
+    1, offset, rotation, 23872, .00273, 1, sun, "earth")
+  // GENERATE MOON
+  moon_index = earth_index + 1
+  rotation = new Vector3 (0, 0, 1.5)
+  setTriVaoGroupObj (celestial_bodies_index, moon_index, 
+    .2727, offset, rotation, 356, .0366, .0339, earth, "moon")
   // GENERATE MARS
-  mars_index = venus_index + 1
+  mars_index = moon_index + 1
   rotation = new Vector3 (0, 0, 25.19)
   setTriVaoGroupObj (celestial_bodies_index, mars_index, .532, offset,
      rotation, 32657, .0015, .972, sun, "mars")
@@ -693,6 +694,7 @@ function setSatelliteHashTable (obj) {
       }
     }
   }
+  local_map.set (obj.index, obj)
   obj.satellite_map = local_map
   return local_map
 } 
@@ -1107,12 +1109,21 @@ function checkObjectToObjectCollision (input_obj, pos_mat) {
   return false;
 }
 
-function setPlanetBoundCamera (vao_index, obj_index, radius) {
+/**
+ * inits bound camera for index object
+ * @param {int} vao_index 
+ * @param {int} obj_index 
+ */
+function setPlanetBoundCamera (vao_index, obj_index) {
   bound_x = 0
   bound_y = 0
   bound_vao_index = vao_index
   bound_obj_index = obj_index
-  bound_radius = radius * distance_multipler + base_distance_offset
+  let obj = interactables[vao_index].getObject(sun_index)
+  let radius = obj.diameter
+  if (obj.getChild (obj_index) != null)
+    radius = obj.getChild (obj_index).diameter
+  bound_radius = radius * distance_multipler + base_distance_offset*distance_multipler
   bound_camera_mode = true
 
 }
@@ -1154,80 +1165,8 @@ function onKeyDown(event) {
   } if (event.key == 'l')
     console.log ("playerpos=" + camera.position)
   // teleports to planets with # key, corresponding to planet position 2 sun
-  if (event.key == '1') {
-    teleportToObject (celestial_bodies_index, mecury_index)
-
-    if (bound_camera_mode && bound_obj_index == mecury_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, mecury_index, .383)
-
-  }
-  if (event.key == '2') {
-    teleportToObject (celestial_bodies_index, venus_index)
-    if (bound_camera_mode && bound_obj_index == venus_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, venus_index, .95)
-
-  }
-  if (event.key == '3') {
-    teleportToObject (celestial_bodies_index, earth_index)
-    if (bound_camera_mode && bound_obj_index == moon_index)
-    {
-      bound_camera_mode = false
-      return
-    }
-    if (bound_camera_mode && bound_obj_index == earth_index) {
-      setPlanetBoundCamera (celestial_bodies_index, moon_index, .2727)
-      return
-    }
-
-    bound_camera_mode = true
-    setPlanetBoundCamera (celestial_bodies_index, earth_index, 1)
-  } if (event.key == '4') {
-    teleportToObject (celestial_bodies_index, mars_index)
-    if (bound_camera_mode && bound_obj_index == mars_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, mars_index, .532)
-  }
-  if (event.key == '5') {
-    teleportToObject (celestial_bodies_index, juipter_index)
-    if (bound_camera_mode && bound_obj_index == juipter_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, juipter_index, 11.21)
-
-  }
-  if (event.key == '6') {
-    teleportToObject (celestial_bodies_index, saturn_index)
-    if (bound_camera_mode && bound_obj_index == saturn_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, saturn_index, 9.45)
-  }
-  if (event.key == '7') {
-    teleportToObject (celestial_bodies_index, uranus_index)
-    if (bound_camera_mode && bound_obj_index == uranus_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, uranus_index, 3.98)
-  }
-  if (event.key == '8') {
-    teleportToObject (celestial_bodies_index, neptune_index)
-    if (bound_camera_mode && bound_obj_index == neptune_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, neptune_index, 3.86)
-  }
+  if (event.key >= '0' && event.key <= '9') 
+    boundCameraHelper (event.key)  
 
     
 }
@@ -1248,6 +1187,101 @@ function onKeyUp (event) {
     keysPressed.up = false
   } if (event.key ==  '-') {
     keysPressed.down = false
+  }
+}
+
+function boundCameraHelper (key_input) {
+  if (key_input == '0') {
+    teleportToObject (celestial_bodies_index, sun_index) 
+    if (bound_object_iterator == null) {
+      setPlanetBoundCamera (celestial_bodies_index, sun_index)
+      bound_object_iterator = interactables[celestial_bodies_index]
+        .getObject(sun_index)[Symbol.iterator]()
+      return
+    }
+    let next_child = bound_object_iterator.next()
+    if (!next_child.done) {
+      setPlanetBoundCamera (celestial_bodies_index, next_child.value.index)
+    }
+    else {
+      bound_camera_mode = false
+      bound_object_iterator = null
+    }
+
+  }
+  if (key_input == '1') {
+    teleportToObject (celestial_bodies_index, mecury_index)
+
+    if (bound_camera_mode && bound_obj_index == mecury_index) {
+      bound_camera_mode = false
+      return
+    }
+    setPlanetBoundCamera (celestial_bodies_index, mecury_index)
+
+  }
+  if (key_input == '2') {
+    teleportToObject (celestial_bodies_index, venus_index)
+    if (bound_camera_mode && bound_obj_index == venus_index) {
+      bound_camera_mode = false
+      return
+    }
+    setPlanetBoundCamera (celestial_bodies_index, venus_index)
+
+  }
+  if (key_input == '3') {
+    teleportToObject (celestial_bodies_index, earth_index)
+    if (bound_camera_mode && bound_obj_index == moon_index)
+    {
+      bound_camera_mode = false
+      return
+    }
+    if (bound_camera_mode && bound_obj_index == earth_index) {
+      setPlanetBoundCamera (celestial_bodies_index, moon_index)
+      return
+    }
+
+    bound_camera_mode = true
+    setPlanetBoundCamera (celestial_bodies_index, earth_index)
+  } if (key_input == '4') {
+    teleportToObject (celestial_bodies_index, mars_index)
+    if (bound_camera_mode && bound_obj_index == mars_index) {
+      bound_camera_mode = false
+      return
+    }
+    setPlanetBoundCamera (celestial_bodies_index, mars_index, .532)
+  }
+  if (key_input == '5') {
+    teleportToObject (celestial_bodies_index, juipter_index)
+    if (bound_camera_mode && bound_obj_index == juipter_index) {
+      bound_camera_mode = false
+      return
+    }
+    setPlanetBoundCamera (celestial_bodies_index, juipter_index)
+
+  }
+  if (key_input == '6') {
+    teleportToObject (celestial_bodies_index, saturn_index)
+    if (bound_camera_mode && bound_obj_index == saturn_index) {
+      bound_camera_mode = false
+      return
+    }
+    setPlanetBoundCamera (celestial_bodies_index, saturn_index)
+  }
+  if (key_input == '7') {
+    teleportToObject (celestial_bodies_index, uranus_index)
+    if (bound_camera_mode && bound_obj_index == uranus_index) {
+      bound_camera_mode = false
+      return
+    }
+    setPlanetBoundCamera (celestial_bodies_index, uranus_index)
+  }
+  if (key_input == '8') {
+    teleportToObject (celestial_bodies_index, neptune_index)
+    if (bound_camera_mode && bound_obj_index == neptune_index) {
+      bound_camera_mode = false
+      return
+    }
+    setPlanetBoundCamera (celestial_bodies_index, neptune_index)
   }
 }
 
