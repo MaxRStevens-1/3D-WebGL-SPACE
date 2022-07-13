@@ -20,6 +20,7 @@ let shaderProgram
 let vao
 let clipFromEye
 let camera
+let camera_slide_theta = .01
 let moveDelta = 5
 let turnDelta = 1
 let then = 0
@@ -32,7 +33,7 @@ let skyboxVao
 let shipShader
 
 // PLANETS / SUN
-let solarsystem_scale = .01
+let solarsystem_scale = .02
 let solarsystem_speed_scale = 1
 let earth_index
 let moon_index
@@ -43,7 +44,7 @@ let juipter_index
 let saturn_index 
 let uranus_index 
 let neptune_index 
-// is theta used to calc earth position in rotation around sun
+
 // SHADOW
 let texturesFromWorld = []
 let fbo
@@ -52,7 +53,6 @@ const textDim = 128;
 let max_shadow_distance = 200000
 let cube_shadow_map
 let depth_buffer;
-
 let lightPosition = new Vector3(0, 0, 0)
 let lightTargets = []
 let lightWorldUps = []
@@ -92,10 +92,9 @@ let bound_radius = 1
 let bound_vao_index
 let bound_obj_index
 let x_heading = 1
-let y_heading = 1
 let z_negative = 1
-let distance_multipler = 1
-let base_distance_offset = .5
+let distance_multipler = 1.5
+let base_distance_offset = 10 * solarsystem_scale
 
 // KEYPRESSES
 let keysPressed = {
@@ -533,14 +532,20 @@ void main() {
     else if (document.pointerLockElement && bound_camera_mode)
     {
       let scale = bound_radius * .001
+      let test_scale = .05
       let new_x = bound_x + event.movementX * scale * x_heading
-      bound_y +=  event.movementY * scale * y_heading
-      if (bound_y * bound_y + bound_x * bound_x >= bound_radius*bound_radius) {
-        bound_y -= event.movementY * scale * y_heading
-      }
-      if (new_x*new_x + bound_y * bound_y >= bound_radius * bound_radius) {
+      let test_y
+      if (bound_y >= 0)
+        test_y = bound_y + event.movementY * scale + (bound_radius * test_scale)
+      else
+        test_y = bound_y + event.movementY * scale - (bound_radius * test_scale)
+      
+      if (test_y * test_y + bound_x * bound_x < bound_radius*bound_radius) 
+        bound_y +=  event.movementY * scale
+
+      if (new_x*new_x + bound_y * bound_y >= bound_radius * bound_radius) 
         x_heading = x_heading * -1
-      }
+      
       if (new_x * new_x + bound_y*bound_y >= bound_radius * bound_radius) 
         z_negative = z_negative * -1
       bound_x += event.movementX * scale * x_heading
@@ -586,7 +591,7 @@ async function initInteractables() {
   spheres.setTranslation (sun_index, offset)
   spheres.setScale (sun_index, new Vector3 (109.29,109.29,109.29).scalarMultiply (solarsystem_scale))
   interactables.push (spheres)
-  let sun = new SpaceObject (sun_index, .01, 0, 0, 0, null)
+  let sun = new SpaceObject (sun_index, .01, 0, 0, 0, 109.29, null, "sun")
   interactables[celestial_bodies_index].addToObjects (sun)
   lightPosition = interactables[celestial_bodies_index].buildMatrix(sun_index)
     .multiplyVector (interactables[0].centroid).xyz
@@ -622,47 +627,47 @@ async function initInteractables() {
   earth_index = sun_index + 1
   let rotation = new Vector3 (0, 0, 23.5)
   let earth = setTriVaoGroupObj (celestial_bodies_index, earth_index, 
-    1, offset, rotation, 23872, .00273, 1, sun)
+    1, offset, rotation, 23872, .00273, 1, sun, "earth")
   // GENERATE MOON
   moon_index = earth_index + 1
   rotation = new Vector3 (0, 0, 1.5)
   setTriVaoGroupObj (celestial_bodies_index, moon_index, 
-    .2727, offset, rotation, 356, .0366, .0339, earth)
+    .2727, offset, rotation, 356, .0366, .0339, earth, "moon")
   // GENERATE MECURY
   mecury_index = moon_index + 1
   rotation = new Vector3 (0, 0, 2)
   setTriVaoGroupObj (celestial_bodies_index, mecury_index, 
-    .383, offset, rotation, 9093, .0114, .0057, sun)
+    .383, offset, rotation, 9093, .0114, .0057, sun, "mercury")
   // GENERATE VENUS
   venus_index = mecury_index + 1
   rotation = new Vector3 (0, 0, 3)
   setTriVaoGroupObj (celestial_bodies_index, venus_index, 
-    .95, offset, rotation, 17003, .0045, .0086, sun)
+    .95, offset, rotation, 17003, .0045, .0086, sun, "venus")
   // GENERATE MARS
   mars_index = venus_index + 1
   rotation = new Vector3 (0, 0, 25.19)
   setTriVaoGroupObj (celestial_bodies_index, mars_index, .532, offset,
-     rotation, 32657, .0015, .972, sun)
+     rotation, 32657, .0015, .972, sun, "mars")
   // GENERATE JUIPTER
   juipter_index = mars_index + 1
   rotation = new Vector3 (0, 0, 3.13)
   setTriVaoGroupObj (celestial_bodies_index, juipter_index,  11.21, offset,
-     rotation, 116549, .00023, 2.424, sun)
+     rotation, 116549, .00023, 2.424, sun, "jjuipter")
   // GENERATE SATURN
   saturn_index = juipter_index + 1
   rotation = new Vector3 (0, 0, 26.73)
   setTriVaoGroupObj (celestial_bodies_index, saturn_index, 
-    9.45, offset, rotation, 231608, 0.000093, 2.243, sun)
+    9.45, offset, rotation, 231608, 0.000093, 2.243, sun, "saturn")
   // GENERATE  URANUS
   uranus_index = saturn_index + 1
   rotation = new Vector3 (0, 0, 82.23)
   setTriVaoGroupObj (celestial_bodies_index, uranus_index, 
-    3.98, offset, rotation, 462338, .000033, 1.4, sun)
+    3.98, offset, rotation, 462338, .000033, 1.4, sun, "uranus")
   // GENERATE NEPTUNE
   neptune_index = uranus_index + 1
   rotation = new Vector3 (0, 0, 28.32)
   setTriVaoGroupObj (celestial_bodies_index, neptune_index, 
-    3.86, offset, rotation, 702222, .000017, 1.491, sun)
+    3.86, offset, rotation, 702222, .000017, 1.491, sun, "neptune")
   
   setSatelliteHashTable (sun)
   // GENERATE HITBOXES
@@ -670,15 +675,24 @@ async function initInteractables() {
 
 }
 
+/**
+ * Sets parent obj and all chldrens index=>SpaceObject hash table.
+ * done to not have to iterate though all children to get an specific child.
+ * @param {SpaceObject} obj 
+ * @returns the combined SpaceObject map
+ */
 function setSatelliteHashTable (obj) {
   let local_map = new Map()
   if (obj.num_satellites != 0 && obj.satellites != null) {
     for (let i = 0; i < obj.num_satellites; i++) {
-      local_map.set (obj.getSatellite(i).index, obj.getSatellite(i))
-      local_map = new Map([...setSatelliteHashTable(obj.getSatellite(i)), ...local_map])
+      let child = obj.getSatellite(i)
+      local_map.set (child.index, child)
+      if (child.num_satellites > 0) {
+        let child_map = setSatelliteHashTable(child)
+        local_map = new Map([...child_map, ...local_map])
+      }
     }
   }
-  console.log (local_map)
   obj.satellite_map = local_map
   return local_map
 } 
@@ -695,11 +709,12 @@ function setSatelliteHashTable (obj) {
  * @param {float} orbit_speed 
  * @param {float} rotation_speed 
  * @param {SpaceObject} parent
+ * @param {String} name
  * 
  * @return {SpaceObject}
  */
 function setTriVaoGroupObj (group_index, obj_index, scale, translation, rotation,
-  radius, orbit_speed, rotation_speed, parent) 
+  radius, orbit_speed, rotation_speed, parent, name) 
   {
     let group = interactables[group_index]
     group.setScale (obj_index, new Vector3 (scale, scale, scale).scalarMultiply (solarsystem_scale))
@@ -708,7 +723,7 @@ function setTriVaoGroupObj (group_index, obj_index, scale, translation, rotation
     group.setRotationY (obj_index, -rotation.y)
     group.setRotationZ (obj_index, -rotation.z)
     let obj = new SpaceObject (obj_index, rotation_speed, orbit_speed,
-      radius, 0, scale*2, parent)
+      radius, 0, scale, parent, name)
     parent.addSatellite (obj)
     //group.setOrbitTheta (obj_index, 2 * Math.PI * Math.random())
     return obj
@@ -828,6 +843,10 @@ function createObject(lines) {
 }
 
 // REWRITE AND RENAME
+/**
+ * Main game logic update controller
+ * @param {float} now is current time 
+ */
 function rotateInteractables(now) {
   // CHECK GRAVITY
   let ship = objects[0]
@@ -859,7 +878,6 @@ function rotateInteractables(now) {
     console.log ("COLLISION DETECTED")
   }
   else {
-    // MOVE PLAYER
     camera.timeStepMove()
   }
 
@@ -883,6 +901,7 @@ function rotateInteractables(now) {
  * @param {Trimesh} object 
  * @param {Matrix4} o_pos
  * @param {int} index
+ * @param {Vector3} obj_center
  * @returns 
  */
 function checkSphereDistance (object, o_pos, index, 
@@ -899,7 +918,7 @@ function checkSphereDistance (object, o_pos, index,
 }
 
 /**
- * 
+ * updates gravity for all SpaceObjects
  * @param {SpaceObject} parent 
  * @param {TriVaoGrouping}
  * @param {Trimesh} ship 
@@ -914,9 +933,8 @@ function gravityUpdate (parent, trivao_group, ship, ship_position, ship_center) 
     }
   }
   let distance = checkSphereDistance (ship, ship_position, parent.index, ship_center)
-  let check = 2000*parent.diameter*solarsystem_scale
-  if (distance <= 2000 * parent.diameter * solarsystem_scale 
-    && distance >= 20 * solarsystem_scale)
+  if (distance <= 8000 * parent.diameter * solarsystem_scale  
+    && distance >= 1 * parent.diameter * solarsystem_scale)
   {
     // MOVE PLAYER WITH FORCE OF GRAVITY
     // calculate force of gravity
@@ -927,20 +945,20 @@ function gravityUpdate (parent, trivao_group, ship, ship_position, ship_center) 
       .multiplyVector (trivao_group.centroid).xyz
     let gravity_direction = sphere_center.add(ship_center.inverse())
       .normalize().scalarMultiply(force)
-    console.log ("gravitu="+gravity_direction)
     camera.end_point = camera.end_point.add (gravity_direction)
   }
 }
 
 /**
  * Guesstimate of gravitational force
- * @param {} distance 
- * @param {*} mass_impact 
- * @returns 
+ * @param {float} distance 
+ * @param {float} mass_impact 
+ * @param {float} radius
+ * @returns rough force of gravity float
  */
 function forceOfGravity (distance, mass_impact, radius) {
   //return 0
-  let force = 1/Math.pow(distance,2) * mass_impact * solarsystem_scale * radius
+  let force = radius/Math.pow(distance,2) * mass_impact * solarsystem_scale
   return force
 } 
 
@@ -956,11 +974,14 @@ function forceOfGravity (distance, mass_impact, radius) {
       rotateAllBodies (space_obj.getSatellite(i), vao_group)
     }
   }
-  if (space_obj.parent == null)
-    return
-  
-  let rotation_center = vao_group.buildMatrix (space_obj.parent.index)
-    .multiplyVector (vao_group.centroid)
+  let rotation_center
+  if (space_obj.parent == null) {
+    rotation_center =lightPosition//vao_group.buildMatrix (space_obj.index)
+      //.multiplyVector (vao_group.centroid)  
+  }
+  else
+    rotation_center = vao_group.buildMatrix (space_obj.parent.index)
+      .multiplyVector (vao_group.centroid)
   let index = space_obj.index
   let scaled_radius = space_obj.orbit_radius * solarsystem_scale
   let theta = space_obj.orbit_theta
@@ -983,7 +1004,7 @@ function forceOfGravity (distance, mass_impact, radius) {
     let move_sphere =  new Vector3 (bound_x, bound_y, -bound_z)
     let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
     let p_position = move_sphere.add (center)
-    camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), .05)
+    camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), camera_slide_theta)
   }
 
 }
@@ -1230,13 +1251,20 @@ function onKeyUp (event) {
   }
 }
 
+/**
+ * places camera in position looking at specified object
+ * @param {int} vaogroup_index 
+ * @param {int} obj_index 
+ * @param {Vector3} offset 
+ */
 function teleportToObject (vaogroup_index, obj_index, 
-  offset = new Vector3 (-10, 50, 20)) {
+  offset = new Vector3 (-10, 50, 20))
+  {
     let group = interactables[vaogroup_index]
     let target = group.buildMatrix(obj_index).multiplyVector (group.centroid).xyz
     let position = offset.add (target)
-    camera = new SlideCamera (position, target, new Vector3 (0,1,0),  .05)   
-}
+    camera = new SlideCamera (position, target, new Vector3 (0,1,0),  camera_slide_theta)   
+  }
 
 /**
  * Generates light targets for shadows
