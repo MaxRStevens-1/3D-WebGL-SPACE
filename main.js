@@ -89,13 +89,13 @@ let bound_x = 0
 let bound_y = 0
 let bound_z = 0
 let bound_radius = 1
-let bound_vao_index
 let bound_obj_index
 let x_heading = 1
 let z_negative = 1
 let distance_multipler = 1.5
 let base_distance_offset = 2
 let bound_object_iterator
+let bound_parent_index
 
 // KEYPRESSES
 let keysPressed = {
@@ -1117,7 +1117,6 @@ function checkObjectToObjectCollision (input_obj, pos_mat) {
 function setPlanetBoundCamera (vao_index, obj_index) {
   bound_x = 0
   bound_y = 0
-  bound_vao_index = vao_index
   bound_obj_index = obj_index
   let obj = interactables[vao_index].getObject(sun_index)
   let radius = obj.diameter
@@ -1127,6 +1126,23 @@ function setPlanetBoundCamera (vao_index, obj_index) {
   bound_camera_mode = true
 
 }
+
+
+/**
+ * places camera in position looking at specified object
+ * @param {int} vaogroup_index 
+ * @param {int} obj_index 
+ * @param {Vector3} offset 
+ */
+ function teleportToObject (vaogroup_index, obj_index, 
+  offset = new Vector3 (-10, 50, 20))
+  {
+    let group = interactables[vaogroup_index]
+    let target = group.buildMatrix(obj_index).multiplyVector (group.centroid).xyz
+    let position = offset.add (target)
+    camera = new SlideCamera (position, target, new Vector3 (0,1,0),  camera_slide_theta)   
+  }
+
 
 /**
  * Handles player inputs when a key is pressed down
@@ -1165,7 +1181,7 @@ function onKeyDown(event) {
   } if (event.key == 'l')
     console.log ("playerpos=" + camera.position)
   // teleports to planets with # key, corresponding to planet position 2 sun
-  if (event.key >= '0' && event.key <= '9') 
+  if (event.key >= '0' && event.key <= '8') 
     boundCameraHelper (event.key)  
 
     
@@ -1190,115 +1206,50 @@ function onKeyUp (event) {
   }
 }
 
+/**
+ * Sets camera to be bound to a planet when 0-8 is pressed.
+ * Iterates through all satelites of an SpaceObject
+ * when same key is continously pressed.
+ * 
+ * @param {char} key_input 
+ */
 function boundCameraHelper (key_input) {
-  if (key_input == '0') {
-    teleportToObject (celestial_bodies_index, sun_index) 
-    if (bound_object_iterator == null) {
-      setPlanetBoundCamera (celestial_bodies_index, sun_index)
-      bound_object_iterator = interactables[celestial_bodies_index]
-        .getObject(sun_index)[Symbol.iterator]()
-      return
-    }
+  let space_obj_index
+  if (key_input == '0') 
+    space_obj_index = sun_index
+  else if (key_input == '1') 
+    space_obj_index = mecury_index
+  else if (key_input == '2') 
+    space_obj_index = venus_index
+  else if (key_input == '3') 
+    space_obj_index = earth_index
+  else if (key_input == '4') 
+    space_obj_index = mars_index
+  else if (key_input == '5') 
+    space_obj_index = juipter_index
+  else if (key_input == '6') 
+    space_obj_index = saturn_index
+  else if (key_input == '7') 
+    space_obj_index = uranus_index
+  else if (key_input == '8') 
+    space_obj_index = neptune_index
+
+  if (bound_object_iterator == null || space_obj_index != bound_parent_index) {
+    bound_parent_index = space_obj_index
+    bound_object_iterator = interactables[celestial_bodies_index]
+      .getObject(sun_index).getChild(space_obj_index)[Symbol.iterator]()
+    setPlanetBoundCamera (celestial_bodies_index, space_obj_index)
+  } else {
     let next_child = bound_object_iterator.next()
-    if (!next_child.done) {
+    if (!next_child.done)
       setPlanetBoundCamera (celestial_bodies_index, next_child.value.index)
-    }
     else {
       bound_camera_mode = false
       bound_object_iterator = null
+      bound_parent_index = null
     }
-
-  }
-  if (key_input == '1') {
-    teleportToObject (celestial_bodies_index, mecury_index)
-
-    if (bound_camera_mode && bound_obj_index == mecury_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, mecury_index)
-
-  }
-  if (key_input == '2') {
-    teleportToObject (celestial_bodies_index, venus_index)
-    if (bound_camera_mode && bound_obj_index == venus_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, venus_index)
-
-  }
-  if (key_input == '3') {
-    teleportToObject (celestial_bodies_index, earth_index)
-    if (bound_camera_mode && bound_obj_index == moon_index)
-    {
-      bound_camera_mode = false
-      return
-    }
-    if (bound_camera_mode && bound_obj_index == earth_index) {
-      setPlanetBoundCamera (celestial_bodies_index, moon_index)
-      return
-    }
-
-    bound_camera_mode = true
-    setPlanetBoundCamera (celestial_bodies_index, earth_index)
-  } if (key_input == '4') {
-    teleportToObject (celestial_bodies_index, mars_index)
-    if (bound_camera_mode && bound_obj_index == mars_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, mars_index, .532)
-  }
-  if (key_input == '5') {
-    teleportToObject (celestial_bodies_index, juipter_index)
-    if (bound_camera_mode && bound_obj_index == juipter_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, juipter_index)
-
-  }
-  if (key_input == '6') {
-    teleportToObject (celestial_bodies_index, saturn_index)
-    if (bound_camera_mode && bound_obj_index == saturn_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, saturn_index)
-  }
-  if (key_input == '7') {
-    teleportToObject (celestial_bodies_index, uranus_index)
-    if (bound_camera_mode && bound_obj_index == uranus_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, uranus_index)
-  }
-  if (key_input == '8') {
-    teleportToObject (celestial_bodies_index, neptune_index)
-    if (bound_camera_mode && bound_obj_index == neptune_index) {
-      bound_camera_mode = false
-      return
-    }
-    setPlanetBoundCamera (celestial_bodies_index, neptune_index)
-  }
+  }  
 }
-
-/**
- * places camera in position looking at specified object
- * @param {int} vaogroup_index 
- * @param {int} obj_index 
- * @param {Vector3} offset 
- */
-function teleportToObject (vaogroup_index, obj_index, 
-  offset = new Vector3 (-10, 50, 20))
-  {
-    let group = interactables[vaogroup_index]
-    let target = group.buildMatrix(obj_index).multiplyVector (group.centroid).xyz
-    let position = offset.add (target)
-    camera = new SlideCamera (position, target, new Vector3 (0,1,0),  camera_slide_theta)   
-  }
 
 /**
  * Generates light targets for shadows
