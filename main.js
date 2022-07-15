@@ -33,7 +33,7 @@ let skyboxVao
 let shipShader
 
 // PLANETS / SUN
-let solarsystem_scale = .015
+let solarsystem_scale = .01
 let solarsystem_speed_scale = 1
 let earth_index
 let moon_index
@@ -93,7 +93,7 @@ let bound_obj_index
 let x_heading = 1
 let z_negative = 1
 let distance_multipler = 1.5
-let base_distance_offset = 2
+let base_distance_offset = 300
 let bound_object_iterator
 let bound_parent_index
 
@@ -683,7 +683,6 @@ function parseSolarMap (solarString) {
     object_list.push (current_object)
     object_map.set (current_object.name, current_object)
   }
-  console.log (object_list)
   return object_list
 
 }
@@ -714,18 +713,10 @@ function setSatelliteHashTable (obj) {
 
 
    /**
- * constructs 1 obj in trivao grouping.
+ * help contructs params for world matrix for object in geomtry group.
  * @param {int} group_index 
  * @param {int} obj_index 
- * @param {float} scale
- * @param {vec3} translation 
- * @param {vec3} rotation 
- * @param {float} radius 
- * @param {float} orbit_speed 
- * @param {float} rotation_speed 
- * @param {SpaceObject} parent
- * @param {String} name
- * 
+ * @param {SpaceObject} space_obj
  * @return {SpaceObject}
  */
 function setTriVaoGroupObj (group_index, obj_index, space_obj)//scale, translation, rotation,
@@ -734,9 +725,8 @@ function setTriVaoGroupObj (group_index, obj_index, space_obj)//scale, translati
     let group = interactables[group_index]
     let scale = space_obj.diameter
     let rotation = space_obj.tilt
-    console.log (space_obj)
     group.setScale (obj_index, new Vector3 (scale, scale, scale).scalarMultiply (solarsystem_scale))
-    group.setTranslation (obj_index, new Vector3(0,0,0))
+    //group.setTranslation (obj_index, new Vector3(0,0,0))
     group.setRotationX (obj_index, -rotation.x)
     group.setRotationY (obj_index, -rotation.y)
     group.setRotationZ (obj_index, -rotation.z)
@@ -1131,12 +1121,11 @@ function setPlanetBoundCamera (vao_index, obj_index) {
   bound_y = 0
   bound_obj_index = obj_index
   let obj = interactables[vao_index].getObject(sun_index)
-  let radius = obj.diameter
+  let diameter = obj.diameter
   if (obj.getChild (obj_index) != null)
-    radius = obj.getChild (obj_index).diameter
-  bound_radius = radius * distance_multipler + base_distance_offset*distance_multipler
+    diameter = obj.getChild (obj_index).diameter
+  bound_radius = diameter * distance_multipler + base_distance_offset*solarsystem_scale
   bound_camera_mode = true
-
 }
 
 
