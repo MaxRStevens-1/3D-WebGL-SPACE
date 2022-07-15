@@ -363,6 +363,7 @@ async function initialize() {
   gl.enable(gl.DEPTH_TEST)
   attributes = new VertexAttributes()
 
+
   // SHADOW INIT
   //let val_buffer = reserveDepthCubeTexture (textDim, textDim, gl.TEXTURE0, gl.TEXTURE5) 
   //cube_shadow_map = val_buffer[0]//reserveDepthTexture (textDim, textDim, gl.TEXTURE0)
@@ -585,18 +586,32 @@ async function initializeObjects() {
 async function initInteractables() {
   // credit to ezgi bakim
   const name = './spaceship.obj';
+  // lOAD IN OBJECTS
+  let solar_map = await readObjFromFile ('./maps/solarsystem.txt')
+  let space_objs = parseSolarMap (solar_map)
   // CREATE SUN
   let offset = lightPosition
   celestial_bodies_index = 0
-  let spheres = generateSphereObject (32, 32, 20, offset, 3, 10)
-  spheres.setTranslation (sun_index, offset)
-  spheres.setScale (sun_index, new Vector3 (109.29,109.29,109.29).scalarMultiply (solarsystem_scale))
+  let spheres = generateSphereObject (32, 32, 20, offset, 3, space_objs.length)
   interactables.push (spheres)
-  let sun = new SpaceObject (sun_index, .01, 0, 0, 0, 109.29, null, "sun")
+  let sun = space_objs[sun_index]
+  mecury_index = sun_index +1
+  venus_index = mecury_index + 1
+  earth_index = venus_index + 1
+  mars_index = earth_index + 1
+  juipter_index = mars_index + 1
+  saturn_index  = juipter_index + 1
+  uranus_index  = saturn_index + 1
+  neptune_index  = uranus_index + 1
+  moon_index = neptune_index + 1
   interactables[celestial_bodies_index].addToObjects (sun)
   lightPosition = interactables[celestial_bodies_index].buildMatrix(sun_index)
     .multiplyVector (interactables[0].centroid).xyz
 
+  for (let i = 0 ; i < space_objs.length; i++) {
+    setTriVaoGroupObj (celestial_bodies_index, i, space_objs[i])
+  }
+  setSatelliteHashTable (sun)
 
   /* 
   let lines = await readObjFromFile(name);
@@ -624,55 +639,52 @@ async function initInteractables() {
   }
   interactables.push(interactable)
   */
-  // GENERATE MECURY
-  mecury_index = sun_index + 1
-  let rotation = new Vector3 (0, 0, 2)
-  setTriVaoGroupObj (celestial_bodies_index, mecury_index, 
-    .383, offset, rotation, 9093, .0114, .0057, sun, "mercury")
-  // GENERATE VENUS
-  venus_index = mecury_index + 1
-  rotation = new Vector3 (0, 0, 3)
-  setTriVaoGroupObj (celestial_bodies_index, venus_index, 
-    .95, offset, rotation, 17003, .0045, .0086, sun, "venus")
-  // SET EARTH IN PLANET TRI VAO GROUP
-  earth_index = venus_index + 1
-  rotation = new Vector3 (0, 0, 23.5)
-  let earth = setTriVaoGroupObj (celestial_bodies_index, earth_index, 
-    1, offset, rotation, 23872, .00273, 1, sun, "earth")
-  // GENERATE MOON
-  moon_index = earth_index + 1
-  rotation = new Vector3 (0, 0, 1.5)
-  setTriVaoGroupObj (celestial_bodies_index, moon_index, 
-    .2727, offset, rotation, 356, .0366, .0339, earth, "moon")
-  // GENERATE MARS
-  mars_index = moon_index + 1
-  rotation = new Vector3 (0, 0, 25.19)
-  setTriVaoGroupObj (celestial_bodies_index, mars_index, .532, offset,
-     rotation, 32657, .0015, .972, sun, "mars")
-  // GENERATE JUIPTER
-  juipter_index = mars_index + 1
-  rotation = new Vector3 (0, 0, 3.13)
-  setTriVaoGroupObj (celestial_bodies_index, juipter_index,  11.21, offset,
-     rotation, 116549, .00023, 2.424, sun, "jjuipter")
-  // GENERATE SATURN
-  saturn_index = juipter_index + 1
-  rotation = new Vector3 (0, 0, 26.73)
-  setTriVaoGroupObj (celestial_bodies_index, saturn_index, 
-    9.45, offset, rotation, 231608, 0.000093, 2.243, sun, "saturn")
-  // GENERATE  URANUS
-  uranus_index = saturn_index + 1
-  rotation = new Vector3 (0, 0, 82.23)
-  setTriVaoGroupObj (celestial_bodies_index, uranus_index, 
-    3.98, offset, rotation, 462338, .000033, 1.4, sun, "uranus")
-  // GENERATE NEPTUNE
-  neptune_index = uranus_index + 1
-  rotation = new Vector3 (0, 0, 28.32)
-  setTriVaoGroupObj (celestial_bodies_index, neptune_index, 
-    3.86, offset, rotation, 702222, .000017, 1.491, sun, "neptune")
-  
-  setSatelliteHashTable (sun)
   // GENERATE HITBOXES
   generateVisualHitBoxes()
+
+}
+
+
+/**
+ * parses an inputed text file, returns an formated space object list
+ * format of txt should be
+ * name,Diameter,Rotation_Speed,Orbit_speed,Orbit_Radius,Orbit_theta,Mass,Rotation X,Rotation Y,Rotation Z,Parent
+ * A child should NEVER come parent in input text
+ * @param {String} solarString 
+ * @returns  array list of SpaceObjects
+ */
+function parseSolarMap (solarString) {
+  solarString = solarString.replaceAll ('\r','')
+  let split_objects = solarString.split ('\n')
+  let object_map = new Map()
+  let object_list = []
+  for (let i = 0; i < split_objects.length; i++) {
+    let split_attributes = split_objects[i].split (',')
+    if (split_attributes.length != 12)
+      continue
+    // set strings to #'s
+    for (let x = 0; x < split_attributes.length; x++) {
+      if (x == 0 || x == 10)
+        continue 
+      split_attributes[x] = Number(split_attributes[x])
+    }
+    let tilt  = new Vector3 (split_attributes[7], split_attributes[8], 
+      split_attributes[9])
+    let parent = split_attributes[10]
+    if (parent.length < 1 || parent == 'null')
+      parent = null
+    let current_object = new SpaceObject (i, split_attributes[2], 
+      split_attributes[3], split_attributes[4], split_attributes[5], split_attributes[1],
+      parent, split_attributes[0], split_attributes[6], tilt)
+    if (current_object.parent != null) {
+      object_map.get (current_object.parent).addSatellite (current_object)
+      current_object.parent = object_map.get (current_object.parent)
+    }
+    object_list.push (current_object)
+    object_map.set (current_object.name, current_object)
+  }
+  console.log (object_list)
+  return object_list
 
 }
 
@@ -683,6 +695,7 @@ async function initInteractables() {
  * @returns the combined SpaceObject map
  */
 function setSatelliteHashTable (obj) {
+
   let local_map = new Map()
   if (obj.num_satellites != 0 && obj.satellites != null) {
     for (let i = 0; i < obj.num_satellites; i++) {
@@ -715,20 +728,18 @@ function setSatelliteHashTable (obj) {
  * 
  * @return {SpaceObject}
  */
-function setTriVaoGroupObj (group_index, obj_index, scale, translation, rotation,
-  radius, orbit_speed, rotation_speed, parent, name) 
+function setTriVaoGroupObj (group_index, obj_index, space_obj)//scale, translation, rotation,
+  //radius, orbit_speed, rotation_speed, parent, name) 
   {
     let group = interactables[group_index]
+    let scale = space_obj.diameter
+    let rotation = space_obj.tilt
+    console.log (space_obj)
     group.setScale (obj_index, new Vector3 (scale, scale, scale).scalarMultiply (solarsystem_scale))
-    group.setTranslation (obj_index, translation)
+    group.setTranslation (obj_index, new Vector3(0,0,0))
     group.setRotationX (obj_index, -rotation.x)
     group.setRotationY (obj_index, -rotation.y)
     group.setRotationZ (obj_index, -rotation.z)
-    let obj = new SpaceObject (obj_index, rotation_speed, orbit_speed,
-      radius, 0, scale, parent, name)
-    parent.addSatellite (obj)
-    //group.setOrbitTheta (obj_index, 2 * Math.PI * Math.random())
-    return obj
   }
 
 /**
@@ -981,9 +992,10 @@ function forceOfGravity (distance, mass_impact, radius) {
     rotation_center =lightPosition//vao_group.buildMatrix (space_obj.index)
       //.multiplyVector (vao_group.centroid)  
   }
-  else
+  else {
     rotation_center = vao_group.buildMatrix (space_obj.parent.index)
       .multiplyVector (vao_group.centroid)
+  }
   let index = space_obj.index
   let scaled_radius = space_obj.orbit_radius * solarsystem_scale
   let theta = space_obj.orbit_theta
