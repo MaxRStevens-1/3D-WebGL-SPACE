@@ -11,7 +11,7 @@ export class SpaceObject {
      * @param {String} name 
      */
     constructor (index, rotation_speed, orbit_speed, orbit_radius, 
-        orbit_theta, diameter, parent, name, mass, tilt) {
+        orbit_theta, diameter, parent, name, mass, tilt, texture_name) {
             this.index = index
             this.rotation_speed = rotation_speed
             this.orbit_speed = orbit_speed
@@ -25,6 +25,7 @@ export class SpaceObject {
             this.name = name
             this.tilt = tilt
             this.satellite_map = new Map()
+            this.soi = 0
         }
 
     /**

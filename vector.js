@@ -98,6 +98,13 @@ export class Vector3 {
       this.coordinates[2] + that.coordinates[2]
     )
   }
+  addConstant (that) {
+    return new Vector3 (
+      this.coordinates[0] + that,
+      this.coordinates[1] + that,
+      this.coordinates[2] + that
+      )
+  }
   scalarMultiply(scalar) {
     return new Vector3(
       this.coordinates[0] * scalar,

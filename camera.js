@@ -56,9 +56,7 @@ export class Camera {
                             .multiplyVector(forwardVec4);
       
       this.forward = new Vector3(pitchVec4.get(0), pitchVec4.get(1), pitchVec4.get(2));
-      // this.forward.y = this.clamp(this.forward.y, -0.8, 0.8)
       this.forward = this.forward.normalize()
-      // console.log(forwardVec4 + " " + pitchVec4 + " " + this.forward)
       this.degrees += degrees
       this.reorient()
     }
@@ -108,10 +106,8 @@ export class SlideCamera extends Camera {
   constructor (from, to, worldUp, time_delta) {
     super (from, to, worldUp);
     this.time_delta = time_delta
-    this.advance_move = 0;
-    this.strafe_move = 0;
-    this.elvate_move = 0;
     this.end_point = this.position
+    this.velocity = new Vector3 (0,0,0)
   }
 
   /**
@@ -119,8 +115,8 @@ export class SlideCamera extends Camera {
    * @param {*} added_velocity 
    */
   adjustVelocityAdvance (added_velocity) {
-    this.advance_move += added_velocity
     this.end_point = this.end_point.add(this.forward.scalarMultiply(added_velocity))
+    this.velocity = this.velocity.add(this.forward.scalarMultiply(added_velocity))
    }
    
   /**
@@ -128,8 +124,8 @@ export class SlideCamera extends Camera {
    * @param {*} added_velocity 
    */
    adjustVelocityStrafe (added_velocity) {
-    this.strafe_move +=  added_velocity
     this.end_point = this.end_point.add(this.right.scalarMultiply(added_velocity))
+    this.velocity = this.velocity.add(this.right.scalarMultiply(added_velocity))
 
    }
    
@@ -140,7 +136,23 @@ export class SlideCamera extends Camera {
    adjustVelocityElevate (added_velocity) {
     this.elvate_move += added_velocity
     this.end_point = this.end_point.add(this.worldup.scalarMultiply(added_velocity))
+    this.velocity = this.velocity.add(this.worldup.scalarMultiply(added_velocity))
 
+   }
+
+  /**
+   * Resets velocity to 0
+   */
+  resetVelocity () {
+    this.velocity = new Vector3 (0,0,0)
+   } 
+
+   /**
+    * adds added_velocity to velocity vector.
+    * @param {Vector3} added_velocity 
+    */
+   adjustVelocity (added_velocity) {
+    this.velocity = this.velocity.add (added_velocity)
    }
    
    /**
@@ -148,19 +160,7 @@ export class SlideCamera extends Camera {
     *  time_delta
     */
    timeStepMove () {
-    if (Math.abs (this.end_point.x - this.position.x) < 1
-    && Math.abs (this.end_point.y - this.position.y) < 1
-    && Math.abs (this.end_point.z - this.position.z) < 1) {
-      this.position.x = this.end_point.x
-      this.position.y = this.end_point.y
-      this.position.z = this.end_point.z
-      this.reorient()
-      return
-    }
-    this.position.x += (this.end_point.x - this.position.x) * this.time_delta
-    this.position.y += (this.end_point.y - this.position.y) * this.time_delta
-    this.position.z += (this.end_point.z - this.position.z) * this.time_delta
-    
+    this.position = this.position.add (this.velocity.scalarMultiply(this.time_delta))
     this.reorient()
    }
 }
