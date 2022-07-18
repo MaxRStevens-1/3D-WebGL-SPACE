@@ -36,7 +36,7 @@ let shipShader
 
 // PLANETS / SUN
 let solarsystem_scale = .1
-let solarsystem_speed_scale = 1
+let solarsystem_speed_scale = .1
 let earth_index
 let moon_index
 let mecury_index
@@ -169,10 +169,12 @@ function render(k) {
   }
   let sun = interactables[celestial_bodies_index]
   if (draw_soi_spheres) {
-    //gl.depthMask(false)
+    gl.depthMask(false)
     let sun_object = interactables[celestial_bodies_index].getObject(sun_index)
-    for (let i = 0; i < sun_object.num_satellites; i++) {
-      let current_obj = sun_object.getChild(i)
+    let iterator = sun_object[Symbol.iterator]()
+    let result = iterator.next()
+    while (!result.done) {
+      let current_obj = result.value
       let index = current_obj.index
       if (current_obj.soi <= 0 )
         continue
@@ -183,8 +185,9 @@ function render(k) {
       sun.vao.drawIndexed(gl.TRIANGLES)
       sun.vao.unbind()
       sun.scales[index]=cur_scale
+      result = iterator.next()
     }
-    //gl.depthMask(true)
+    gl.depthMask(true)
   }
 
   shaderProgram.setUniform3f('specularColor', .99, .99, .1)
@@ -193,7 +196,7 @@ function render(k) {
   shaderProgram.setUniform1f('ambientFactor', .99)
   shaderProgram.setUniform1i('normTexture', 3);
   
-  let sun_position = sun.buildMatrix(sun_index)//getMatrix (celestial_bodies_index)
+  let sun_position = sun.buildMatrix(sun_index)
   shaderProgram.setUniformMatrix4 ('worldFromModel', sun_position)
   sun.vao.bind()
   sun.vao.drawIndexed (gl.TRIANGLES)
@@ -669,7 +672,7 @@ async function initInteractables() {
 /**
  * parses an inputed text file, returns an formated space object list
  * format of txt should be
- * name,Diameter,Rotation_Speed,Orbit_speed,Orbit_Radius,Orbit_theta,Mass,Rotation X,Rotation Y,Rotation Z,Parent
+ * name,radius,Rotation_Speed,Orbit_speed,Orbit_Radius,Orbit_theta,Mass,Rotation X,Rotation Y,Rotation Z,Parent
  * A child should NEVER come parent in input text
  * @param {String} solarString 
  * @returns  array list of SpaceObjects
@@ -744,15 +747,16 @@ function setTriVaoGroupObj (group_index, obj_index, space_obj)//scale, translati
   //radius, orbit_speed, rotation_speed, parent, name) 
   {
     let group = interactables[group_index]
-    space_obj.diameter *= solarsystem_scale
+    space_obj.radius *= solarsystem_scale
     space_obj.orbit_radius = space_obj.orbit_radius * solarsystem_scale
+    space_obj.mass *= solarsystem_scale
     if (space_obj.parent != null)
-      space_obj.soi = space_obj.orbit_radius 
+      space_obj.soi = (space_obj.orbit_radius)  
         * Math.pow(space_obj.mass/space_obj.parent.mass, 2/5) * solarsystem_scale
     console.log (space_obj.name +" has an soi of " +  space_obj.soi + " an mass of" + space_obj.mass +
-    " an diameter of " + space_obj.diameter)
+    " and an radius of " + space_obj.radius)
     let rotation = space_obj.tilt
-    let scale = space_obj.diameter
+    let scale = space_obj.radius
 
     group.setScale (obj_index, new Vector3 (scale, scale, scale))
     //group.setTranslation (obj_index, new Vector3(0,0,0))
@@ -824,7 +828,7 @@ function generateVisualHitBoxes () {
     cube_attributes.addIndices (cube_faces)
     let cube_vao = new VertexArray (shaderProgram, cube_attributes)
     cube_trivao.vao = cube_vao
-    // ADD TO BOUNDING BOX ARRAYS
+    // ADD TO BOUNDING BOX ARRAYS 
     c_obj.setBoundingBox(cube_trivao)
   }
 }
@@ -966,22 +970,20 @@ function gravityUpdate (parent, trivao_group, ship, ship_position, ship_center) 
       gravityUpdate (sat, trivao_group, ship, ship_position, ship_center)
     }
   }
-  let distance = checkSphereDistance (parent.index, ship_center)
+  let distance = Math.max(checkSphereDistance (parent.index, ship_center) - parent.radius, parent.radius)
   let test = Math.pow(distance,2)
-  //console.log (parent.name+" has dis= "+distance + " and soi of "+(parent.soi))
-  //console.log ("and has a radius of " + parent.orbit_radius +" and a mass of " + parent.mass)
   // MOVE PLAYER WITH FORCE OF GRAVITY
   // calculate force of gravity
-  let force = forceOfGravity (distance, parent.mass)
-  //console.log ("and a has a test distance of " +test+" and has a force of " + force)
-  if (parent.index == sun_index) {
-    console.log (parent.name + " has force = "+force)
-  }
-  if (parent.index != sun_index && distance < parent.soi) {
-    console.log (parent.name + " has captured player within soi")
+  let force = forceOfGravity (distance, parent.mass) 
+  
+  if (parent.index != sun_index && distance < parent.soi) { 
     console.log (parent.name + " has force = "+ force)
     console.log (parent.name + " has distance = " + distance)
-    //console.exit()
+    console.log (parent.name + " has soi of " + parent.soi)
+    console.log ("and a mass of " + parent.mass)
+    let p_dis = checkSphereDistance (parent.parent.index, ship_center)
+    console.log (parent.parent.name + " has force" + forceOfGravity(p_dis, parent.parent.mass))
+    console.log ("and has a mass of " + parent.parent.mass)
   }
   // calculate unit vector between pointing from ship to sphere
   // B - A / | B - A |
@@ -1002,7 +1004,7 @@ function gravityUpdate (parent, trivao_group, ship, ship_position, ship_center) 
  */
 function forceOfGravity (distance, mass) {
   //return 0
-  let force = mass/Math.pow(distance,2)
+  let force = mass/Math.pow(distance,2) * 10 * solarsystem_speed_scale
   return force
 } 
 
@@ -1163,10 +1165,10 @@ function setPlanetBoundCamera (vao_index, obj_index) {
   bound_y = 0
   bound_obj_index = obj_index
   let obj = interactables[vao_index].getObject(sun_index)
-  let diameter = obj.diameter
+  let radius = obj.radius
   if (obj.getChild (obj_index) != null)
-    diameter = obj.getChild (obj_index).diameter
-  bound_radius = diameter * distance_multipler + base_distance_offset*solarsystem_scale
+    radius = obj.getChild (obj_index).radius
+  bound_radius = radius * distance_multipler + base_distance_offset*solarsystem_scale
   bound_camera_mode = true
 }
 

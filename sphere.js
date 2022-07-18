@@ -46,6 +46,5 @@ export function generateSphere(nlatitudes, nlongitudes, radius) {
         indices.push(p1 + 1, p2, p2 + 1)
       }
     }
-    console.log (texPositions)
     return [positions, normals, indices, texPositions]
   }
