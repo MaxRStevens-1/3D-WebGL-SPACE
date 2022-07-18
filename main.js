@@ -35,7 +35,7 @@ let skyboxVao
 let shipShader
 
 // PLANETS / SUN
-let solarsystem_scale = .1
+let solarsystem_scale = .05
 let solarsystem_speed_scale = .1
 let earth_index
 let moon_index
@@ -636,9 +636,6 @@ async function initInteractables() {
     setTriVaoGroupObj (celestial_bodies_index, i, space_objs[i])
   }
   setSatelliteHashTable (sun)
-
-  
-
   /* 
   let lines = await readObjFromFile(name);
   shipShader = ship_shader();
@@ -687,8 +684,8 @@ function parseSolarMap (solarString) {
     if (split_attributes.length != 12)
       continue
     // set strings to #'s
-    for (let x = 0; x < split_attributes.length; x++) {
-      if (x == 0 || x == 10)
+    for (let x = 1; x < split_attributes.length; x++) {
+      if (x == 10)
         continue 
       split_attributes[x] = Number(split_attributes[x])
     }
@@ -747,14 +744,21 @@ function setTriVaoGroupObj (group_index, obj_index, space_obj)//scale, translati
   //radius, orbit_speed, rotation_speed, parent, name) 
   {
     let group = interactables[group_index]
+    
     space_obj.radius *= solarsystem_scale
-    space_obj.orbit_radius = space_obj.orbit_radius * solarsystem_scale
+    space_obj.orbit_radius *= solarsystem_scale
     space_obj.mass *= solarsystem_scale
+
+
     if (space_obj.parent != null)
       space_obj.soi = (space_obj.orbit_radius)  
-        * Math.pow(space_obj.mass/space_obj.parent.mass, 2/5) * solarsystem_scale
-    console.log (space_obj.name +" has an soi of " +  space_obj.soi + " an mass of" + space_obj.mass +
+        * Math.pow(space_obj.mass/space_obj.parent.mass, 2/5)
+    console.log (space_obj.name +" has an soi of " +
+      (space_obj.soi ) + " an mass of " + space_obj.mass +
     " and an radius of " + space_obj.radius)
+    console.log ("and has orbit rad of " + space_obj.orbit_radius)
+
+
     let rotation = space_obj.tilt
     let scale = space_obj.radius
 
@@ -956,38 +960,67 @@ function checkSphereDistance (index, obj_center) {
 }
 
 /**
- * updates gravity for all SpaceObjects
+ * updates gravity for all SpaceObjects.
+ * only updates player IF player within Object Sphere of Influence
  * @param {SpaceObject} parent 
  * @param {TriVaoGrouping}
  * @param {Trimesh} ship 
  * @param {Matrix4} ship_position
  * @param {Vector3} ship_center
  */
-function gravityUpdate (parent, trivao_group, ship, ship_position, ship_center) {
-  if (parent.num_satellites > 0 && parent.satellites != null) {
-    for (let i = 0; i < parent.num_satellites; i++) {
-      let sat = parent.getSatellite (i)
-      gravityUpdate (sat, trivao_group, ship, ship_position, ship_center)
+function gravityUpdate (object, trivao_group, ship, ship_position, ship_center) {
+  let objectWithinDistance = null
+  let withinDistance = -1
+  if (object.num_satellites > 0 && object.satellites != null) {
+    for (let i = 0; i < object.num_satellites; i++) {
+      let sat = object.getSatellite (i)
+      let withinObject = gravityUpdate (sat, trivao_group, ship, ship_position, ship_center)
+      if (withinObject != null) {
+        objectWithinDistance = withinObject[0]
+        withinDistance = withinObject[1]
+      }
     }
   }
-  let distance = Math.max(checkSphereDistance (parent.index, ship_center) - parent.radius, parent.radius)
-  let test = Math.pow(distance,2)
+  let distance = Math.max(checkSphereDistance (object.index, ship_center) - object.radius, object.radius/2)
+  if (object.parent == null) {
+    if (withinDistance == -1)
+      withinDistance = distance
+    if (objectWithinDistance == null)
+      objectWithinDistance = object
+    movePlayerByGravity (objectWithinDistance, withinDistance,
+      trivao_group, ship_center)
+  }
+  if (distance < object.soi)
+    return [object, distance]
+  if (objectWithinDistance != null)
+    return [objectWithinDistance, withinDistance]
+  return null
+}
+
+/**
+ * Moves player by the gravity of specified object
+ * @param {SpaceObject} object 
+ * @param {float} distance 
+ * @param {TrimeshVaoGrouping} trivao_group 
+ * @param {Vector3} ship_center 
+ */
+function movePlayerByGravity (object, distance, trivao_group, ship_center) {
   // MOVE PLAYER WITH FORCE OF GRAVITY
   // calculate force of gravity
-  let force = forceOfGravity (distance, parent.mass) 
-  
-  if (parent.index != sun_index && distance < parent.soi) { 
-    console.log (parent.name + " has force = "+ force)
-    console.log (parent.name + " has distance = " + distance)
-    console.log (parent.name + " has soi of " + parent.soi)
-    console.log ("and a mass of " + parent.mass)
-    let p_dis = checkSphereDistance (parent.parent.index, ship_center)
-    console.log (parent.parent.name + " has force" + forceOfGravity(p_dis, parent.parent.mass))
-    console.log ("and has a mass of " + parent.parent.mass)
-  }
+  let force = forceOfGravity (distance, object.mass) 
+  /*
+  if (object.index != sun_index && distance < object.soi) { 
+    console.log (object.name + " has force = "+ force)
+    console.log (object.name + " has distance = " + distance)
+    console.log (object.name + " has soi of " + object.soi)
+    console.log ("and a mass of " + object.mass)
+    let p_dis = checkSphereDistance (object.parent.index, ship_center)
+    console.log (object.parent.name + " has force" + forceOfGravity(p_dis, object.parent.mass))
+    console.log ("and has a mass of " + object.parent.mass)
+  }*/
   // calculate unit vector between pointing from ship to sphere
   // B - A / | B - A |
-  let sphere_center = trivao_group.buildMatrix (parent.index)
+  let sphere_center = trivao_group.buildMatrix (object.index)
     .multiplyVector (trivao_group.centroid).xyz
   let gravity_direction = sphere_center.add(ship_center.inverse())
     .normalize().scalarMultiply(force)
@@ -1004,7 +1037,7 @@ function gravityUpdate (parent, trivao_group, ship, ship_position, ship_center) 
  */
 function forceOfGravity (distance, mass) {
   //return 0
-  let force = mass/Math.pow(distance,2) * 10 * solarsystem_speed_scale
+  let force = mass/Math.pow(distance,2) *  solarsystem_speed_scale
   return force
 } 
 
@@ -1053,11 +1086,7 @@ function forceOfGravity (distance, mass) {
     let p_position = move_sphere.add (center)
     camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), camera_slide_theta)
   }
-
-
 }
-
-
 
 /**
  * Checks if an inputed object is within an unaligned bounding box
