@@ -21,7 +21,7 @@ let vao
 let clipFromEye
 let camera
 let camera_slide_theta = .01
-let moveDelta = 1
+let moveDelta = .5//1
 let turnDelta = 1
 let then = 0
 
@@ -35,7 +35,7 @@ let skyboxVao
 let shipShader
 
 // PLANETS / SUN
-let solarsystem_scale = .05
+let solarsystem_scale = .1
 let solarsystem_speed_scale = .1
 let earth_index
 let moon_index
@@ -94,8 +94,8 @@ let bound_radius = 1
 let bound_obj_index
 let x_heading = 1
 let z_negative = 1
-let distance_multipler = 50
-let base_distance_offset = 50
+let distance_multipler = 3
+let base_distance_offset = 1000
 let bound_object_iterator
 let bound_parent_index
 
@@ -179,12 +179,15 @@ function render(k) {
       if (current_obj.soi <= 0 )
         continue
       let cur_scale = sun.scales[index]
-      sun.scales[index] = cur_scale.addConstant (current_obj.soi * solarsystem_scale)
+      let cur_rot = sun.rotations[index]
+      sun.scales[index] = cur_scale.addConstant (current_obj.soi)
+      sun.rotations[index] = new Vector3 (0,0,0)
       shaderProgram.setUniformMatrix4 ('worldFromModel', sun.buildMatrix(index))
       sun.vao.bind()
       sun.vao.drawIndexed(gl.TRIANGLES)
       sun.vao.unbind()
       sun.scales[index]=cur_scale
+      sun.rotations[index] = cur_rot
       result = iterator.next()
     }
     gl.depthMask(true)
@@ -515,6 +518,7 @@ void main() {
     }
   }
   float shadowFactor = percentage / 9.0;
+  
 
   // specular
   vec3 eyeDirection = normalize(-mixPosition);
@@ -524,7 +528,7 @@ void main() {
   // ambient
   vec3 ambient = ambientFactor * albedo * diffuseColor;
   // diffuse
-  vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor * shadowFactor;
+  vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor;// * shadowFactor;
     //albedo * shadowFactor * litness;//
   //vec3 rgb = diffuse;
   
@@ -616,7 +620,7 @@ async function initInteractables() {
   // CREATE SUN
   let offset = lightPosition
   celestial_bodies_index = 0
-  let spheres = generateSphereObject (20, 20, 20, offset, 3, space_objs.length)
+  let spheres = generateSphereObject (20, 20, 5, offset, 3, space_objs.length)
   interactables.push (spheres)
   let sun = space_objs[sun_index]
   mecury_index = sun_index +1
@@ -632,7 +636,7 @@ async function initInteractables() {
   lightPosition = interactables[celestial_bodies_index].buildMatrix(sun_index)
     .multiplyVector (interactables[0].centroid).xyz
 
-  for (let i = 0 ; i < space_objs.length; i++) {
+  for (let i = space_objs.length - 1; i >= 0; i--) {
     setTriVaoGroupObj (celestial_bodies_index, i, space_objs[i])
   }
   setSatelliteHashTable (sun)
@@ -745,19 +749,20 @@ function setTriVaoGroupObj (group_index, obj_index, space_obj)//scale, translati
   {
     let group = interactables[group_index]
     
-    space_obj.radius *= solarsystem_scale
-    space_obj.orbit_radius *= solarsystem_scale
-    space_obj.mass *= solarsystem_scale
-
-
     if (space_obj.parent != null)
       space_obj.soi = (space_obj.orbit_radius)  
-        * Math.pow(space_obj.mass/space_obj.parent.mass, 2/5)
+        * Math.pow(space_obj.mass/space_obj.parent.mass, 2/5) * solarsystem_scale
+
     console.log (space_obj.name +" has an soi of " +
       (space_obj.soi ) + " an mass of " + space_obj.mass +
     " and an radius of " + space_obj.radius)
     console.log ("and has orbit rad of " + space_obj.orbit_radius)
-
+    console.log ("thats " + (space_obj.soi * EARTH_RADIUS * 1.60934 * (1/solarsystem_scale)) + " km")
+    
+    space_obj.radius *= solarsystem_scale
+    space_obj.orbit_radius *= solarsystem_scale
+    //space_obj.mass *= solarsystem_scale
+    
 
     let rotation = space_obj.tilt
     let scale = space_obj.radius
@@ -895,7 +900,6 @@ function rotateInteractables(now) {
     let sun = interactables[celestial_bodies_index].getObject(sun_index)
     let ship_center = objectPositions[0].multiplyVector(ship.centroid).xyz
     gravityUpdate (sun, spheres, ship, objectPositions[0], ship_center)
-    console.log ("_____________________________")
   }
 
   rotateAllBodies (spheres.getObject(sun_index), spheres) 
@@ -908,8 +912,8 @@ function rotateInteractables(now) {
   let ship_offset_z = 0
   // ships position
   let ship_position = camera.position
-                      .add (camera.forward.scalarMultiply(ship_offset_x)
-                      .add (camera.right.scalarMultiply (ship_offset_z)))
+                      .add (camera.forward.scalarMultiply(ship_offset_x))
+                      //.add (camera.right.scalarMultiply (ship_offset_x))
   ship.position_point = ship_position;
   objectPositions[0] = Matrix4.translate (ship_position.x, ship_position.y, 
                                           ship_position.z)
@@ -981,7 +985,7 @@ function gravityUpdate (object, trivao_group, ship, ship_position, ship_center) 
       }
     }
   }
-  let distance = Math.max(checkSphereDistance (object.index, ship_center) - object.radius, object.radius/2)
+  let distance = Math.max(checkSphereDistance (object.index, ship_center), object.radius/3)
   if (object.parent == null) {
     if (withinDistance == -1)
       withinDistance = distance
@@ -1007,17 +1011,8 @@ function gravityUpdate (object, trivao_group, ship, ship_position, ship_center) 
 function movePlayerByGravity (object, distance, trivao_group, ship_center) {
   // MOVE PLAYER WITH FORCE OF GRAVITY
   // calculate force of gravity
-  let force = forceOfGravity (distance, object.mass) 
-  /*
-  if (object.index != sun_index && distance < object.soi) { 
-    console.log (object.name + " has force = "+ force)
-    console.log (object.name + " has distance = " + distance)
-    console.log (object.name + " has soi of " + object.soi)
-    console.log ("and a mass of " + object.mass)
-    let p_dis = checkSphereDistance (object.parent.index, ship_center)
-    console.log (object.parent.name + " has force" + forceOfGravity(p_dis, object.parent.mass))
-    console.log ("and has a mass of " + object.parent.mass)
-  }*/
+  distance = distance * (1/solarsystem_scale)
+  let force = forceOfGravity (distance, object.mass)  
   // calculate unit vector between pointing from ship to sphere
   // B - A / | B - A |
   let sphere_center = trivao_group.buildMatrix (object.index)
@@ -1037,7 +1032,8 @@ function movePlayerByGravity (object, distance, trivao_group, ship_center) {
  */
 function forceOfGravity (distance, mass) {
   //return 0
-  let force = mass/Math.pow(distance,2) *  solarsystem_speed_scale
+  // conv
+  let force = ((mass)/Math.pow(distance,2)) * solarsystem_speed_scale
   return force
 } 
 
@@ -1197,7 +1193,7 @@ function setPlanetBoundCamera (vao_index, obj_index) {
   let radius = obj.radius
   if (obj.getChild (obj_index) != null)
     radius = obj.getChild (obj_index).radius
-  bound_radius = radius * distance_multipler + base_distance_offset*solarsystem_scale
+  bound_radius = radius * distance_multipler + base_distance_offset * solarsystem_scale
   bound_camera_mode = true
 }
 
@@ -1259,6 +1255,15 @@ function onKeyDown(event) {
     bound_camera_mode = false
   } if (event.key == 'c') {
     console.crash()
+  } if (event.key == 'i') {
+      bound_radius += 5*solarsystem_scale
+      base_distance_offset += 5*solarsystem_scale
+  }
+  if (event.key == 'k') {
+    if (bound_radius - 5 *solarsystem_scale > 5*solarsystem_scale) {
+      bound_radius -= 5*solarsystem_scale
+      base_distance_offset -= 5*solarsystem_scale 
+    }
   }
   // teleports to planets with # key, corresponding to planet position 2 sun
   if (event.key >= '0' && event.key <= '8') 
