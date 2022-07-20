@@ -150,10 +150,6 @@ export class Trimesh {
   }
   flat_textures() {
     return this.textures.flatMap((texture) => [texture.x, texture.y])
-    //WOW!
-    //return this.textures.flatMap((texture) => [texture.x, texture.y, texture.z])
-    // thats real stupid
-
   }
 
   setTextures (textures) {
@@ -227,12 +223,12 @@ export class Trimesh {
       // pushes as vec 3 for generateNormals func
       indices.push (new Vector3 (indArr[0], indArr[1], indArr[2]))
     }
-
     const objTrimesh = new Trimesh (positions, normals, indices)
     if (normals.length == 0 || normals == [])
     {
       objTrimesh.generateNormals()
     }
+    
     return objTrimesh;
   }
 }
