@@ -386,7 +386,7 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     if (rotation.z != 0)
       rotationM = rotationM.multiplyMatrix (Matrix4.rotateZ(rotation.z))
     if (rotation.y != 0)
-      rotationM = rotationM.multiplyMatrix (Matrix4.rotateY(rotation.y))
+      rotationM = Matrix4.rotateY(rotation.y)
 
 
     let translationM = Matrix4.translate (translation.x,    

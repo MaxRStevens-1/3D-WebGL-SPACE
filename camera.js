@@ -174,23 +174,19 @@ export class BoundCamera {
     this.bound_position = new Vector3 (0,0,0)
     this.radius = 0
     this.x_heading = 1
-    this.y_heading = 1
     this.z_heading = 1
     this.distance_multiplier = 3
     this.base_distance_offset = 1000
     this.base_scale_amount = 5
     this.vao_group = null
-    this.bound_object_iterator = null
     this.bound_obj_index = -1
-    this.bound_parent_index = -1
   }
 
   /**
-   * 
    * @param {float} scale 
    */
   moveCameraCloser (scale) {
-    if (this.radius - this.base_scale_amount * scale > this.base_scale_amount * scale) 
+    if (this.radius - this.base_scale_amount * scale > this.base_scale_amount * scale * 2)  
     {
       this.radius -= this.base_scale_amount*scale
       this.base_distance_offset -= this.base_scale_amount*scale
@@ -198,7 +194,6 @@ export class BoundCamera {
   }
 
   /**
-   * 
    * @param {float} scale 
    */
   moveCameraAway (scale) {

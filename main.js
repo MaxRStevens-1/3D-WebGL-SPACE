@@ -36,8 +36,8 @@ let shipShader
 let ship_scale = new Vector3 (.1, .1, .1)
 
 // PLANETS / SUN
-let solarsystem_scale = .02
-let solarsystem_speed_scale = .1
+let solarsystem_scale = .01
+let solarsystem_speed_scale = 1
 let earth_index
 let moon_index
 let mecury_index
@@ -144,7 +144,7 @@ function render(k) {
     gl.depthMask(false);
     shaderProgram.setUniform3f('specularColor', .2, .4, .3)
     shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-    shaderProgram.setUniform1f('shininess', 40)
+    shaderProgram.setUniform1f('shininess', 1000000000)
     shaderProgram.setUniform1f('ambientFactor', .6)
     for (let i = 0; i < interactables.length; i++) {
       const interactable = interactables[i]
@@ -200,7 +200,7 @@ function render(k) {
 
   shaderProgram.setUniform3f('specularColor', .8, .9, .1)
   shaderProgram.setUniform3f('diffuseColor', .9, .9, .9)
-  shaderProgram.setUniform1f('shininess', 100000000)
+  shaderProgram.setUniform1f('shininess', 100)
   shaderProgram.setUniform1f('ambientFactor', .3)
   shaderProgram.setUniform1i("depthTexture", 0);
   //for (let k = 0; k < 6; k++) 
@@ -220,15 +220,12 @@ function render(k) {
         // sphere index
         if (i == celestial_bodies_index && j == earth_index)
           shaderProgram.setUniform1i('normTexture', 2);
-        if (i == celestial_bodies_index && j == moon_index) {
+        if (i == celestial_bodies_index && j == moon_index)
           shaderProgram.setUniform1i('normTexture', 4);
-        }
         if (i == celestial_bodies_index && j == mecury_index)
           shaderProgram.setUniform1i ('normTexture', 5)
-
         if (i == celestial_bodies_index && j == venus_index)
           shaderProgram.setUniform1i ('normTexture', 6)
-
         if (i == celestial_bodies_index && j == mars_index)
           shaderProgram.setUniform1i ('normTexture', 7) 
         if (i == celestial_bodies_index && j == juipter_index)
@@ -283,7 +280,7 @@ function renderDepths(width, height, fbo) {
     for (let j = 0; j < interactable.num_objects; j++) {
       //if (i == celestial_bodies_index && j == sun_index)
         //continue
-      const pos = interactable.buildMatrix(j)//.getMatrix (j)
+      const pos = interactable.buildMatrix(j)
       depthProgram.setUniformMatrix4('worldFromModel', pos)
       interactable.vao.bind()
       interactable.vao.drawIndexed(gl.TRIANGLES)
@@ -489,14 +486,15 @@ out vec4 fragmentColor;
 
 void main() {
   vec3 normal = normalize(mixNormal);
-  vec4 test = eyeworld * vec4(lightWorldPosition,1);
-  vec3 lightDirection = normalize (test.xyz - mixPosition);
-  float litness = dot(normal, lightDirection);
+  vec4 lightEyePosition = eyeworld * vec4(lightWorldPosition,1);
+  vec3 lightDirection = normalize (lightEyePosition.xyz - mixPosition);
+  float litness = (dot(normal, lightDirection));
 
   // get normal texture
   vec4 realTexture = texture(normTexture, flat_mixTexPosition);
   vec3 albedo = texture(normTexture, flat_mixTexPosition).rgb; //vec3 (0.6 ,0.7, 0.1);
   // calculate fragment depth and shadow
+  
   vec4 texPosition = mixTexPosition / mixTexPosition.w;
   float fragmentDepth = texPosition.z - 0.0005;
   float closestDepth = texture(depthTexture, texPosition.xy).r;
@@ -504,13 +502,14 @@ void main() {
   float percentage = 0.0;
   for (int y = -1; y <= 1; y += 1) {
     for (int x = -1; x <= 1; x += 1) {
-      vec2 offset = vec2(x, y) / 256.0;
+      vec2 offset = vec2(x, y) / 512.0;
       vec2 neighborPosition = texPosition.xy + offset;
       float closestDepth = texture(depthTexture, neighborPosition).r;
       percentage += closestDepth < fragmentDepth ? 0.0 : 1.0;
     }
   }
   float shadowFactor = percentage / 9.0;
+  
   
 
   // specular
@@ -522,11 +521,9 @@ void main() {
   vec3 ambient = ambientFactor * albedo * diffuseColor;
   // diffuse
   vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor * shadowFactor;
-    //albedo * shadowFactor * litness;//
-  //vec3 rgb = diffuse;
   
   vec3 rgb = ambient + diffuse + specular;
-  fragmentColor = realTexture * vec4(rgb, 1.0); //vec4 (diffuse, 1.0);
+  fragmentColor = realTexture * vec4(rgb, 1.0); 
 }
   `;
 
@@ -725,7 +722,6 @@ function setSatelliteHashTable (obj) {
  * @param {float} scale_factor 
  */
 function setTriVaoGroupObj (group_index, obj_index, space_obj, scale_factor)//scale, translation, rotation,
-  //radius, orbit_speed, rotation_speed, parent, name) 
   {
     let group = interactables[group_index]
     
@@ -735,23 +731,21 @@ function setTriVaoGroupObj (group_index, obj_index, space_obj, scale_factor)//sc
 
     console.log (space_obj.name +" has an soi of " +
       (space_obj.soi ) + " an mass of " + space_obj.mass +
-    " and an radius of " + space_obj.radius)
-    console.log ("and has orbit rad of " + space_obj.orbit_radius)
+    " and an radius of " + (space_obj.radius * EARTH_RADIUS))
+    console.log ("and has orbit rad of " + (space_obj.orbit_radius*EARTH_RADIUS))
     console.log ("thats " + (space_obj.soi * EARTH_RADIUS * 1.60934 * (1/solarsystem_scale)) + " km")
     
     space_obj.radius *= solarsystem_scale
     space_obj.orbit_radius *= solarsystem_scale
-    //space_obj.mass *= solarsystem_scale
     
 
     let rotation = space_obj.tilt
-    let scale = space_obj.radius
+    let scale = space_obj.radius / scale_factor
 
     group.setScale (obj_index, new Vector3 (scale, scale, scale))
-    //group.setTranslation (obj_index, new Vector3(0,0,0))
-    group.setRotationX (obj_index, -rotation.x)
-    group.setRotationY (obj_index, -rotation.y)
-    group.setRotationZ (obj_index, -rotation.z)
+    group.setRotationX (obj_index, rotation.x)
+    group.setRotationY (obj_index, rotation.y)
+    group.setRotationZ (obj_index, rotation.z)
   }
 
 /**
@@ -772,6 +766,7 @@ function generateSphereObject (nlat, nlong, radius, offset, texture_index, num_s
   let sphere_trivao = new TrimeshVaoGrouping (sPos, sNor, sInd, null, sTex, texture_index, num_spheres)
   sPos = sphere_trivao.flat_positions ()
   sNor = sphere_trivao.flat_normals ()
+  sInd = sphere_trivao.flat_indices ()
   // SPHERE ATTRIBUTES
   const sphere_attributes = new VertexAttributes()
   sphere_attributes.addAttribute ('position', sPos.length / 3, 3, sPos)
@@ -885,7 +880,7 @@ function rotateInteractables(now) {
   rotateAllBodies (spheres.getObject(sun_index), spheres) 
   if (bound_camera_mode)
     camera = bound_camera.updateBoundSpherePosition () 
-  lightTarget = spheres.buildMatrix (earth_index).multiplyVector (spheres.centroid).xyz
+  lightTarget = new Vector3 (0,0,1)//spheres.buildMatrix (earth_index).multiplyVector (spheres.centroid).xyz
 
   
 
@@ -1013,9 +1008,7 @@ function movePlayerByGravity (object, distance, trivao_group, ship_center) {
  * @returns rough force of gravity float
  */
 function forceOfGravity (distance, mass) {
-  //return 0
-  // conv
-  let force = ((mass)/Math.pow(distance,2)) * solarsystem_speed_scale * 10
+  let force = ((mass)/Math.pow(distance,2)) * solarsystem_speed_scale
   return force
 } 
 
