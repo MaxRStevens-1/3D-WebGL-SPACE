@@ -6,9 +6,9 @@ import { Matrix4 } from './matrix'
 import { Vector3, Vector4 } from './vector'
 import { Terrain } from './terrain'
 import { Trimesh, TrimeshVao, TrimeshVaoGrouping, getGroupLength } from './trimesh'
-import { Camera, SlideCamera } from './camera'
+import { Camera, SlideCamera, BoundCamera } from './camera'
 import { reserveDepthCubeTexture, initializeDepthProgram, createTexture2d, initializeDepthFbo, reserveDepthTexture} from './shadow'
-import {readBoxen, generateCube} from './box_gen'
+import { readBoxen, generateCube} from './box_gen'
 import { generateSkybox, loadCubemap, skybox_shader_program, ship_shader} from './skybox'
 import { generateSphere } from './sphere.js'
 import { SpaceObject } from './SpaceObject.js'
@@ -36,7 +36,7 @@ let shipShader
 let ship_scale = new Vector3 (.1, .1, .1)
 
 // PLANETS / SUN
-let solarsystem_scale = .05
+let solarsystem_scale = .02
 let solarsystem_speed_scale = .1
 let earth_index
 let moon_index
@@ -88,15 +88,7 @@ let show_hitboxes = false
 
 // BOUND CAMERA
 let bound_camera_mode = false
-let bound_x = 0
-let bound_y = 0
-let bound_z = 0
-let bound_radius = 1
-let bound_obj_index
-let x_heading = 1
-let z_negative = 1
-let distance_multipler = 3
-let base_distance_offset = 1000
+let bound_camera
 let bound_object_iterator
 let bound_parent_index
 
@@ -562,24 +554,7 @@ void main() {
     }
     else if (document.pointerLockElement && bound_camera_mode)
     {
-      let scale = bound_radius * .001
-      let test_scale = .05
-      let new_x = bound_x + event.movementX * scale * x_heading
-      let test_y
-      if (bound_y >= 0)
-        test_y = bound_y + event.movementY * scale + (bound_radius * test_scale)
-      else
-        test_y = bound_y + event.movementY * scale - (bound_radius * test_scale)
-      
-      if (test_y * test_y + bound_x * bound_x < bound_radius*bound_radius) 
-        bound_y +=  event.movementY * scale
-
-      if (new_x*new_x + bound_y * bound_y >= bound_radius * bound_radius) 
-        x_heading = x_heading * -1
-      
-      if (new_x * new_x + bound_y*bound_y >= bound_radius * bound_radius) 
-        z_negative = z_negative * -1
-      bound_x += event.movementX * scale * x_heading
+      bound_camera.mouseBoundSphereUpdate (event.movementX, event.movementY)
     }
   })
 
@@ -908,6 +883,8 @@ function rotateInteractables(now) {
   }
 
   rotateAllBodies (spheres.getObject(sun_index), spheres) 
+  if (bound_camera_mode)
+    camera = bound_camera.updateBoundSpherePosition () 
   lightTarget = spheres.buildMatrix (earth_index).multiplyVector (spheres.centroid).xyz
 
   
@@ -1075,18 +1052,6 @@ function forceOfGravity (distance, mass) {
     * solarsystem_speed_scale * (Math.PI/180)
   // place camera in new path of obj
   vao_group.addToRotationY (index, space_obj.rotation_speed * solarsystem_speed_scale)
-  if (bound_camera_mode && bound_obj_index == index) {
-    if (bound_x * bound_x + bound_y * bound_y >= bound_radius*bound_radius)
-    {
-      bound_x = 0
-      bound_y = 0
-    }
-    bound_z = Math.sqrt (bound_radius*bound_radius - bound_x*bound_x - bound_y*bound_y) * z_negative
-    let move_sphere =  new Vector3 (bound_x, bound_y, -bound_z)
-    let center = vao_group.buildMatrix (index).multiplyVector (vao_group.centroid).xyz
-    let p_position = move_sphere.add (center)
-    camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), camera_slide_theta)
-  }
 }
 
 /**
@@ -1191,14 +1156,12 @@ function checkObjectToObjectCollision (input_obj, pos_mat) {
  * @param {int} obj_index 
  */
 function setPlanetBoundCamera (vao_index, obj_index) {
-  bound_x = 0
-  bound_y = 0
-  bound_obj_index = obj_index
+  bound_camera = new BoundCamera(camera, camera_slide_theta)
   let obj = interactables[vao_index].getObject(sun_index)
   let radius = obj.radius
   if (obj.getChild (obj_index) != null)
     radius = obj.getChild (obj_index).radius
-  bound_radius = radius * distance_multipler + base_distance_offset * solarsystem_scale
+  bound_camera.setBoundPosition (interactables[vao_index], obj_index, radius, solarsystem_scale)
   bound_camera_mode = true
 }
 
@@ -1247,10 +1210,8 @@ function onKeyDown(event) {
       keysPressed.up = true
     }
     else {
-      if (bound_radius - 5 *solarsystem_scale > 5*solarsystem_scale) {
-        bound_radius -= 5*solarsystem_scale
-        base_distance_offset -= 5*solarsystem_scale 
-      }
+      bound_camera.moveCameraCloser (solarsystem_scale)
+
     }
   } if (event.key ==  '-' || keysPressed.down) {
     if (!bound_camera_mode) {
@@ -1258,8 +1219,7 @@ function onKeyDown(event) {
       keysPressed.down = true
     }
     else {
-      bound_radius += 5*solarsystem_scale
-      base_distance_offset += 5*solarsystem_scale
+      bound_camera.moveCameraAway (solarsystem_scale)
     }
 
   } if (event.key == 'h') {

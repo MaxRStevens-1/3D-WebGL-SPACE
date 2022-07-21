@@ -1,6 +1,8 @@
 import { Matrix4 } from './matrix'
 import { Vector3, Vector4 } from './vector'
 import {Terrain} from './terrain'
+import { Trimesh, TrimeshVao, TrimeshVaoGrouping, getGroupLength } from './trimesh'
+
 
 export class Camera {
   /**
@@ -163,6 +165,129 @@ export class SlideCamera extends Camera {
     this.position = this.position.add (this.velocity.scalarMultiply(this.time_delta))
     this.reorient()
    }
+}
+
+export class BoundCamera {
+  constructor (camera, time_delta) {
+    this.camera = camera
+    this.time_delta = time_delta
+    this.bound_position = new Vector3 (0,0,0)
+    this.radius = 0
+    this.x_heading = 1
+    this.y_heading = 1
+    this.z_heading = 1
+    this.distance_multiplier = 3
+    this.base_distance_offset = 1000
+    this.base_scale_amount = 5
+    this.vao_group = null
+    this.bound_object_iterator = null
+    this.bound_obj_index = -1
+    this.bound_parent_index = -1
+  }
+
+  /**
+   * 
+   * @param {float} scale 
+   */
+  moveCameraCloser (scale) {
+    if (this.radius - this.base_scale_amount * scale > this.base_scale_amount * scale) 
+    {
+      this.radius -= this.base_scale_amount*scale
+      this.base_distance_offset -= this.base_scale_amount*scale
+    }
+  }
+
+  /**
+   * 
+   * @param {float} scale 
+   */
+  moveCameraAway (scale) {
+    this.radius += this.base_scale_amount*scale
+    this.base_distance_offset += this.base_scale_amount*scale
+  }
+
+  /**
+   * Updates bound camera to inputed values
+   * @param {TrimeshVaoGrouping} vao_group 
+   * @param {int} index 
+   * @param {float} radius 
+   * @param {float} scale 
+   */
+  setBoundPosition (vao_group, index, radius, scale) {
+    this.vao_group = vao_group
+    this.bound_obj_index = index
+    this.radius = radius * this.distance_multiplier + this.base_distance_offset * scale
+    this.bound_position = new Vector3 (0,0,0)
+  }
+
+  /**
+   * translates position on movement sphere by x and y movement.
+   * @param {float} movement_x 
+   * @param {float} movement_y 
+   */
+  mouseBoundSphereUpdate (movement_x, movement_y) {
+    let bound_radius = this.radius
+    let scale = bound_radius * .001
+    let bound_x = this.bound_position.x
+    let bound_y = this.bound_position.y
+    let test_scale = .05
+    let new_x = bound_x + movement_x * scale * this.x_heading
+    let test_y
+    if (bound_y >= 0)
+      test_y = bound_y + movement_y * scale + (bound_radius * test_scale)
+    else
+      test_y = bound_y + movement_y * scale - (bound_radius * test_scale)
+    
+    if (test_y * test_y + bound_x * bound_x < bound_radius*bound_radius) 
+      bound_y +=  movement_y * scale
+
+    if (new_x*new_x + bound_y * bound_y >= bound_radius * bound_radius) 
+      this.x_heading *= -1
+    
+    if (new_x * new_x + bound_y*bound_y >= bound_radius * bound_radius) 
+      this.z_heading *= -1
+    bound_x += movement_x * scale * this.x_heading
+    this.bound_position = new Vector3 (bound_x, bound_y, this.bound_position.z)
+  }
+
+  /**
+   * Updates sphere position.
+   * @param {TrimeshVaoGrouping} vao_group 
+   * @param {int} index 
+   * @returns 
+   */
+  updateBoundSpherePosition () {
+    let bound_x = this.bound_position.x
+    let bound_y = this.bound_position.y
+    let bound_radius = this.radius
+    if (bound_x * bound_x + bound_y * bound_y >= bound_radius*bound_radius)
+    {
+      bound_x = 0
+      bound_y = 0
+    }
+    let bound_z = Math.sqrt (bound_radius*bound_radius - bound_x*bound_x - bound_y*bound_y)
+      * this.z_heading
+    this.bound_position =  new Vector3 (bound_x, bound_y, -bound_z)
+    let center = this.vao_group.buildMatrix (this.bound_obj_index)
+      .multiplyVector (this.vao_group.centroid).xyz
+    let p_position = this.bound_position.add (center)
+    this.camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), this.time_delta)
+    return this.camera
+  }
+
+  /**
+   * returns local camera
+   * @returns camera
+   */
+  getCamera () {return this.camera}
+  /**
+   * updates current camera to inputed position / target
+   * @param {Vector3} from 
+   * @param {Vector3} to 
+   */
+  updatePosition (from, to) {
+    this.camera = new SlideCamera (from, to, new Vector3 (0,1,0), time_delta)
+  }
 }
 export class TerrianCamera extends Camera {
   constructor (from, to, worldUp, terrain, eyeLevel) {
