@@ -79,10 +79,8 @@ const ambientFactor = 0.7;
 
 // OBJECTS
 const interactables = [];
-
 const objects = []
-const objectPositions = []
-
+const player_index = 0
 // BOUNDINGBOXES
 let show_hitboxes = false
 
@@ -141,6 +139,7 @@ function render(k) {
   // DRAW HITBOXES IF OPTION SELECTED
   if (show_hitboxes)
   {
+    bounding_box.vao.bind()
     gl.depthMask(false);
     shaderProgram.setUniform3f('specularColor', .2, .4, .3)
     shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
@@ -153,15 +152,15 @@ function render(k) {
         const pos = interactable.buildMatrix(j)//getMatrix (j)
         // SET AS ATTRIBUTE
         shaderProgram.setUniformMatrix4('worldFromModel', pos)
-        bounding_box.vao.bind()
         bounding_box.vao.drawIndexed(gl.TRIANGLES)
-        bounding_box.vao.unbind()
       }
     }
     gl.depthMask(true);
+    bounding_box.vao.unbind()
   }
   let sun = interactables[celestial_bodies_index]
   if (draw_soi_spheres) {
+    sun.vao.bind()
     //gl.depthMask(false)
     let sun_object = interactables[celestial_bodies_index].getObject(sun_index)
     let iterator = sun_object[Symbol.iterator]()
@@ -176,13 +175,12 @@ function render(k) {
       sun.scales[index] = new Vector3(0,0,0).addConstant(current_obj.soi)
       sun.rotations[index] = new Vector3 (0,0,0)
       shaderProgram.setUniformMatrix4 ('worldFromModel', sun.buildMatrix(index))
-      sun.vao.bind()
       sun.vao.drawIndexed(gl.TRIANGLES)
-      sun.vao.unbind()
       sun.scales[index]=cur_scale
       sun.rotations[index] = cur_rot
       result = iterator.next()
     }
+    sun.vao.unbind()
     //gl.depthMask(true)
   }
 
@@ -253,11 +251,13 @@ function render(k) {
     // PLAYER SHIP AS MIRROR
     for (let i = 0; i < objects.length; i++) {
       const object = objects[i]
-      const pos = objectPositions[i]
-      // SET AS ATTRIBUTE
-      shipShader.setUniformMatrix4('worldFromModel', pos)
       object.vao.bind()
-      object.vao.drawIndexed(gl.TRIANGLES)
+      for (let j = 0; j < object.num_objects; j++) {
+        const pos = object.buildMatrix (j);
+        // SET AS ATTRIBUTE
+        shipShader.setUniformMatrix4('worldFromModel', pos)
+        object.vao.drawIndexed(gl.TRIANGLES)
+      }
       object.vao.unbind()
     }
 
@@ -277,23 +277,25 @@ function renderDepths(width, height, fbo) {
   depthProgram.setUniformMatrix4('clipFromWorld', clipFromWorld);
   for (let i = 0; i < interactables; i++) {
     const interactable = interactables[i]
+    interactable.vao.bind()
     for (let j = 0; j < interactable.num_objects; j++) {
       //if (i == celestial_bodies_index && j == sun_index)
         //continue
       const pos = interactable.buildMatrix(j)
       depthProgram.setUniformMatrix4('worldFromModel', pos)
-      interactable.vao.bind()
       interactable.vao.drawIndexed(gl.TRIANGLES)
-      interactable.vao.unbind()
     }
+    interactable.vao.unbind()
   }
 
   for (let i = 0; i < objects.length; i++) {
     const object = objects[i]
-    const pos = objectPositions[i]
-    depthProgram.setUniformMatrix4('worldFromModel', pos)
     object.vao.bind()
-    object.vao.drawIndexed(gl.TRIANGLES)
+    for (let j = 0; j < object.num_objects; j++) {
+      const pos = object.buildMatrix (j)
+      depthProgram.setUniformMatrix4('worldFromModel', pos)
+      object.vao.drawIndexed(gl.TRIANGLES)
+    }
     object.vao.unbind()
   }
 
@@ -327,11 +329,13 @@ function shadowMapPass (width, height, fbo) {
     }
 
     for (let i = 0; i < objects.length; i++) {
-      const object = objects[i]
-      const pos = objectPositions[i]
-      depthProgram.setUniformMatrix4('worldFromModel', pos)
       object.vao.bind()
-      object.vao.drawIndexed(gl.TRIANGLES)
+      for (let j = 0; j < objects.num_objects; j++) {
+        const object = objects[i]
+        const pos = object.buildMatrix (j)
+        depthProgram.setUniformMatrix4('worldFromModel', pos)
+        object.vao.drawIndexed(gl.TRIANGLES)
+      }
       object.vao.unbind()
     }
     depthProgram.unbind();
@@ -576,12 +580,11 @@ async function initializeObjects() {
   let ship_offset = new Vector3(10,10,0)
   ship_offset.add (ship.centroid)
   let ship_position = camera.position
-                      .add (camera.forward.scalarMultiply(ship_offset.x)
-                      .add (camera.right.scalarMultiply (ship_offset.z)))
+                      .add (camera.forward.scalarMultiply(ship_offset.x))
+                      //.add (camera.right.scalarMultiply (ship_offset.z)))
+  ship.setTranslation (player_index,ship_position)
+  ship.setScale (player_index,ship_scale)
   ship.position_point = ship_position;
-  objectPositions.push( Matrix4.scale (.1, .1, .1).multiplyMatrix(Matrix4.translate (ship_position.x, 
-                                          ship_position.y, 
-                                          ship_position.z)))
 }
 
 /**
@@ -855,10 +858,9 @@ function createObject(lines, shader) {
   obj_attributes.addAttribute('normal',   normals.length   / 3, 3, normals)
   obj_attributes.addIndices  (indices)
   let obj_vao = new VertexArray(shader, obj_attributes)
-  let trivao = new TrimeshVao  (obj_trimesh.positions,
-                               obj_trimesh.normals,
-                               obj_trimesh.indices,
-                               obj_vao)
+  let trivao = new TrimeshVaoGrouping  (obj_trimesh.positions,
+                               obj_trimesh.normals, obj_trimesh.indices,
+                               obj_vao, null, null, 1)
   return trivao
 }
 
@@ -869,12 +871,13 @@ function createObject(lines, shader) {
  */
 function rotateInteractables(now) {
   // CHECK GRAVITY
-  let ship = objects[0]
+  let ship = objects[player_index]
   let spheres = interactables[celestial_bodies_index]
   if (!bound_camera_mode) {
     let sun = interactables[celestial_bodies_index].getObject(sun_index)
-    let ship_center = objectPositions[0].multiplyVector(ship.centroid).xyz
-    gravityUpdate (sun, spheres, ship, objectPositions[0], ship_center)
+    let ship_pos = ship.buildMatrix(player_index)
+    let ship_center = ship_pos.multiplyVector(ship.centroid).xyz
+    gravityUpdate (sun, spheres, ship, ship_pos, ship_center)
   }
 
   rotateAllBodies (spheres.getObject(sun_index), spheres) 
@@ -883,18 +886,17 @@ function rotateInteractables(now) {
   lightTarget = new Vector3 (0,0,1)//spheres.buildMatrix (earth_index).multiplyVector (spheres.centroid).xyz
 
   
-
+if (!bound_camera_mode) {
   // OFFSETS ON SCREEN
-  let ship_offset_x = 17
-  let ship_offset_z = 0
-  // ships position
-  let ship_position = camera.position
-                      .add (camera.forward.scalarMultiply(ship_offset_x))
-                      //.add (camera.right.scalarMultiply (ship_offset_x))
-  ship.position_point = ship_position;
-  objectPositions[0] = Matrix4.translate (ship_position.x, ship_position.y, ship_position.z)
-    .multiplyMatrix (Matrix4.scalev(ship_scale))
-                                          
+    let ship_offset_x = 17
+    let ship_offset_z = 0
+    // ships position
+    let ship_position = camera.position
+                        .add (camera.forward.scalarMultiply(ship_offset_x))
+                        //.add (camera.right.scalarMultiply (ship_offset_x))
+    ship.position_point = ship_position;
+    ship.setTranslation (player_index,ship_position)
+}                                          
 
   // CHECK IF PLAYER CAN MOVE
   if (checkCollision (ship)) {
@@ -1050,10 +1052,11 @@ function forceOfGravity (distance, mass) {
 /**
  * Checks if an inputed object is within an unaligned bounding box
  *  of any iterable object
- * @param {*} object 
+ * @param {TrimeshVaoGrouping} object 
+ * @param {int} index
  * @returns 
  */
-function checkCollision (object) {
+function checkCollision (object, index) {
   for (let i = celestial_bodies_index + 1; i < interactables.length; i++) {
     const interactable = interactables[i]
     for (let j = 0; j < interactable.num_objects; j++) {
@@ -1067,7 +1070,8 @@ function checkCollision (object) {
       // GET WORLD POSITION OF CENTER OF BB
       let center = pos.multiplyVector (c_hitbox.centroid)
       // THE MIN TEST POINT OF OTHER BB
-      let p_pos_min = objectPositions[0].multiplyVector (object.min).xyz
+      let object_position = object.buildMatrix(index)
+      let p_pos_min = object_position.multiplyVector (object.min).xyz
       // GET VECTOR FROM POSITION 2 CENTER
       let proj_vec_min = p_pos_min.sub (center)
 
@@ -1099,7 +1103,7 @@ function checkCollision (object) {
       
       // NOW try objects max point
       
-      let p_pos_max = objectPositions[0].multiplyVector (object.max).xyz
+      let p_pos_max = object_position.multiplyVector (object.max).xyz
       let proj_vec_max = p_pos_max.sub (center)
       point_x = Math.abs (x_local.dot (proj_vec_max) * 2)
       point_y = Math.abs (y_local.dot (proj_vec_max) * 2)

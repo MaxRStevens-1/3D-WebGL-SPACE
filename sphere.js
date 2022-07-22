@@ -30,8 +30,6 @@ export function generateSphere(nlatitudes, nlongitudes, radius) {
         let cos_i = Math.cos(adjusted_i);
         let p = new Vector3 (sin_i * sin_j, cos_j, cos_i * sin_j + 1)
         positions.push (p)
-        //const normal = p.normalize()
-        //normals.push(new Vector3 (normal.x, normal.y, normal.z))
         texPositions.push(i/nlongitudes); 
         texPositions.push(j/nlongitudes); 
       }

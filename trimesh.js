@@ -251,7 +251,7 @@ export class TrimeshVaoGrouping extends TrimeshVao {
    * @param {vao} vao vao of obj grouping
    * @param {vec3[]} textures texels of obj
    * @param {int} texture_index texture index of obj
-   * @param {int} num_objects # of objects in grouping
+   * @param {int} num_objects number objects in grouping
    * @param {mat4} toWorldFromModels worldFromModel mat4s
    */
   constructor (positions, normals, indices, vao, textures, texture_index, num_objects) 
@@ -281,15 +281,6 @@ export class TrimeshVaoGrouping extends TrimeshVao {
   }
   addToObjects (object) {
     this.objects.push (object)
-  }
-
-  //sets mat4 at index
-  setMatrix (worldFromModel, index) {
-    this.toWorldFromModels[index] = worldFromModel
-  }
-  // gets mat4 at index
-  getMatrix (index) {
-    return this.toWorldFromModels[index]
   }
 
   setTranslation (index, new_translation) {
@@ -386,7 +377,7 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     if (rotation.z != 0)
       rotationM = rotationM.multiplyMatrix (Matrix4.rotateZ(rotation.z))
     if (rotation.y != 0)
-      rotationM = Matrix4.rotateY(rotation.y)
+      rotationM = rotationM.multiplyMatrix (Matrix4.rotateY(rotation.y))
 
 
     let translationM = Matrix4.translate (translation.x,    
