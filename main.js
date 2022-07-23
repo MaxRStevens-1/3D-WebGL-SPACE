@@ -550,8 +550,12 @@ void main() {
   })
   window.addEventListener('pointermove', (event) => {
     if (document.pointerLockElement && !bound_camera_mode) {
+      let ship = objects[player_index]
       camera.yaw(-event.movementX * turnDelta)
       camera.pitch(-event.movementY * turnDelta)
+      //ship.addToRotationY (player_index,event.movementX * turnDelta)
+      //ship.addToRotationX (player_index, -event.movementY * turnDelta)
+      //console.log ("forward is " +forward)
     }
     else if (document.pointerLockElement && bound_camera_mode)
     {
@@ -574,17 +578,24 @@ async function initializeObjects() {
   shipShader = ship_shader();
   let lines = await readObjFromFile ('./mother-spaceship/source/ms_other_2.obj')
   let ship = createObject (lines, shipShader)//readBoxen ("0 0 0   1 1 1   1 0 1", shipShader)[0]
+  ship.setRotationY(player_index, 0)
+  ship.setRotationZ (player_index, 0)
+  ship.setRotationX (player_index, 0)
   objects.push (ship)
 
     // SHIPS OFFSET CALCULATION
   let ship_offset = new Vector3(10,10,0)
+  let c_rot = ship.rotations[player_index]
+  let forward = new Vector3 (Math.cos(c_rot.x) * Math.sin(c_rot.y),
+    -Math.sin (c_rot.x), Math.cos (c_rot.x) * Math.cos (c_rot.y))
+    ship.setTranslation (player_index, camera.position)
+  camera.position = ship.buildMatrix(player_index)
+    .multiplyVector(forward.scalarMultiply (-20)).xyz
   ship_offset.add (ship.centroid)
-  let ship_position = camera.position
-                      .add (camera.forward.scalarMultiply(ship_offset.x))
+  //let ship_position = camera.position
+  //                    .add (camera.forward.scalarMultiply(ship_offset.x))
                       //.add (camera.right.scalarMultiply (ship_offset.z)))
-  ship.setTranslation (player_index,ship_position)
   ship.setScale (player_index,ship_scale)
-  ship.position_point = ship_position;
 }
 
 /**
@@ -861,6 +872,7 @@ function createObject(lines, shader) {
   let trivao = new TrimeshVaoGrouping  (obj_trimesh.positions,
                                obj_trimesh.normals, obj_trimesh.indices,
                                obj_vao, null, null, 1)
+  
   return trivao
 }
 
@@ -877,26 +889,15 @@ function rotateInteractables(now) {
     let sun = interactables[celestial_bodies_index].getObject(sun_index)
     let ship_pos = ship.buildMatrix(player_index)
     let ship_center = ship_pos.multiplyVector(ship.centroid).xyz
-    gravityUpdate (sun, spheres, ship, ship_pos, ship_center)
+    //gravityUpdate (sun, spheres, ship, ship_pos, ship_center)
+    camera.position = ship.buildMatrix(player_index)
+    .multiplyVector(ship.centroid.add(new Vector3(-5, 20, -30))).xyz
   }
 
   rotateAllBodies (spheres.getObject(sun_index), spheres) 
   if (bound_camera_mode)
     camera = bound_camera.updateBoundSpherePosition () 
-  lightTarget = new Vector3 (0,0,1)//spheres.buildMatrix (earth_index).multiplyVector (spheres.centroid).xyz
-
-  
-if (!bound_camera_mode) {
-  // OFFSETS ON SCREEN
-    let ship_offset_x = 17
-    let ship_offset_z = 0
-    // ships position
-    let ship_position = camera.position
-                        .add (camera.forward.scalarMultiply(ship_offset_x))
-                        //.add (camera.right.scalarMultiply (ship_offset_x))
-    ship.position_point = ship_position;
-    ship.setTranslation (player_index,ship_position)
-}                                          
+  lightTarget = spheres.buildMatrix (earth_index).multiplyVector (spheres.centroid).xyz                                          
 
   // CHECK IF PLAYER CAN MOVE
   if (checkCollision (ship)) {
@@ -1158,6 +1159,7 @@ function setPlanetBoundCamera (vao_index, obj_index) {
   let radius = obj.radius
   if (obj.getChild (obj_index) != null)
     radius = obj.getChild (obj_index).radius
+  console.log (radius)
   bound_camera.setBoundPosition (interactables[vao_index], obj_index, radius, solarsystem_scale)
   bound_camera_mode = true
 }

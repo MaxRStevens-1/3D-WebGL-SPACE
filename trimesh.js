@@ -313,7 +313,7 @@ export class TrimeshVaoGrouping extends TrimeshVao {
    */
   addToRotationX (index, degree) {
     this.rotations[index].set (0, (degree +
-      this.rotations[index].x) % 350)
+      this.rotations[index].x) % 360)
   }
 
   /**
@@ -331,7 +331,7 @@ export class TrimeshVaoGrouping extends TrimeshVao {
    * @param {*} degree 
    */
   addToRotationY (index, degree) {
-    this.rotations[index].set (1, degree + this.rotations[index].y)
+    this.rotations[index].set (1, degree + (this.rotations[index].y % 360))
   }
 
   setRotationCenter (index, degree) {
@@ -357,7 +357,7 @@ export class TrimeshVaoGrouping extends TrimeshVao {
    */
   addToRotationZ (index, degree) {
     this.rotations[index].set (2, degree +
-      this.rotations[index].z)
+      (this.rotations[index].z + this.degree%360))
   }
 
   setScale (index, scale) {
@@ -378,8 +378,6 @@ export class TrimeshVaoGrouping extends TrimeshVao {
       rotationM = rotationM.multiplyMatrix (Matrix4.rotateZ(rotation.z))
     if (rotation.y != 0)
       rotationM = rotationM.multiplyMatrix (Matrix4.rotateY(rotation.y))
-
-
     let translationM = Matrix4.translate (translation.x,    
       translation.y, translation.z)
     
