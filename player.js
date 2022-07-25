@@ -13,7 +13,7 @@ export class PlayerObject {
      * @param {float} velocity_theta 
      */
     constructor (trivao, index, position, rotation, rotation_theta,
-         velocity, velocity_theta) {
+         velocity, velocity_theta, camera_offset) {
         this.trivao = trivao
         this.centroid = trivao.centroid
         this.index = index
@@ -27,6 +27,7 @@ export class PlayerObject {
         this.right = null
         this.up = null
         this.worldup  = new Vector3 (0,1,0)
+        this.camera_offset = camera_offset
     }
 
 
@@ -50,6 +51,7 @@ export class PlayerObject {
 
     resetVelocity () {
         this.velocity = new Vector3 (0,0,0)
+        this.rotation_velocity = new Vector3 (0,0,0)
     }
     
     addVelocityForward (force) {
@@ -115,5 +117,25 @@ export class PlayerObject {
         trivao_rot.setall(this.current_rotation.x, this.current_rotation.y, this.current_rotation.z,0)
         this.trivao.setRotation (this.index, trivao_rot)
     }
-    
+
+    calculatePositionMovement () {
+        this.calculateDirectionVectors ()
+        this.movePlayerByVelocity ()
+        this.trivao.setTranslation (this.index, new Vector3(this.position.x, this.position.y, this.position.z))
+    }
+
+    calculateOrientationMovement () {
+        this.moveOrientationByRotation ()
+        let trivao_rot = new Vector4()
+        trivao_rot.setall(this.current_rotation.x, this.current_rotation.y, this.current_rotation.z,0)
+        this.trivao.setRotation (this.index, trivao_rot)
+    }
+
+    adjustCameraOffsetUp () {
+       this.camera_offset = this.camera_offset.scalarMultiply (1.1)
+    }
+
+    adjustCameraOffsetDown () {
+        this.camera_offset = this.camera_offset.scalarMultiply (.9)
+    }
 } 

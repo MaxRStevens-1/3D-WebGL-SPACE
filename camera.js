@@ -117,7 +117,6 @@ export class SlideCamera extends Camera {
    * @param {*} added_velocity 
    */
   adjustVelocityAdvance (added_velocity) {
-    this.end_point = this.end_point.add(this.forward.scalarMultiply(added_velocity))
     this.velocity = this.velocity.add(this.forward.scalarMultiply(added_velocity))
    }
    
@@ -126,7 +125,6 @@ export class SlideCamera extends Camera {
    * @param {*} added_velocity 
    */
    adjustVelocityStrafe (added_velocity) {
-    this.end_point = this.end_point.add(this.right.scalarMultiply(added_velocity))
     this.velocity = this.velocity.add(this.right.scalarMultiply(added_velocity))
 
    }
@@ -137,7 +135,6 @@ export class SlideCamera extends Camera {
    */
    adjustVelocityElevate (added_velocity) {
     this.elvate_move += added_velocity
-    this.end_point = this.end_point.add(this.worldup.scalarMultiply(added_velocity))
     this.velocity = this.velocity.add(this.worldup.scalarMultiply(added_velocity))
 
    }
@@ -176,7 +173,7 @@ export class BoundCamera {
     this.x_heading = 1
     this.z_heading = 1
     this.distance_multiplier = 3
-    this.base_distance_offset = 1000
+    this.base_distance_offset = 100
     this.base_scale_amount = 5
     this.vao_group = null
     this.bound_obj_index = -1

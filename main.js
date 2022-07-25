@@ -22,23 +22,18 @@ let vao
 let clipFromEye
 let camera
 let camera_slide_theta = .01
-let moveDelta = .05//1
 let turnDelta = 1
 let then = 0
-let done_rot = false
 let EARTH_RADIUS = 3958.8
 
 // SKYBOX
 let skyboxShaderProgram
 let skyboxVao
 
-// MIRROR SURFACE SHADER
-let shipShader
-let ship_scale = .01//new Vector3 (.1, .1, .1)
-let player
+
 
 // PLANETS / SUN
-let solarsystem_scale = .01
+let solarsystem_scale = .005
 let solarsystem_speed_scale = .1
 let earth_index
 let moon_index
@@ -49,6 +44,13 @@ let juipter_index
 let saturn_index 
 let uranus_index 
 let neptune_index 
+
+// MIRROR SURFACE SHADER
+let shipShader
+let ship_scale = .1 * solarsystem_scale
+let player
+let moveDelta = .05 * solarsystem_speed_scale
+
 
 // SHADOW
 let texturesFromWorld = []
@@ -354,7 +356,7 @@ function shadowMapPass (width, height, fbo) {
 function onResizeWindow() {
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.01, 
+  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.001, 
     1000000 * solarsystem_scale)
 }
 
@@ -598,7 +600,7 @@ async function initializeObjects() {
   let scale = new Vector3(ship_scale, ship_scale, ship_scale)
   ship.setScale (player_index, scale)
   let zero = new Vector3 (0,0,0)
-  player = new PlayerObject (ship, player_index, ship_position, zero, 0.1, zero, .1)
+  player = new PlayerObject (ship, player_index, ship_position, zero, 0.1, zero, .1, new Vector3(0, 10, -30))
   ship.position_point = ship_position;
 }
 
@@ -901,17 +903,16 @@ function rotateInteractables(now) {
 
   
 if (!bound_camera_mode) {
-    // calculates cameras position based off player ships center and
-    // hardcoded offsets
-    player.tickUpdate()
-    let ship_world = player.trivao.buildMatrix (player_index)
-    let cam_pos = ship_world.multiplyVector(player.centroid.add (new Vector3(0, 10, -30))).xyz
-    
-    let cam_to = ship_world.multiplyVector(player.centroid).xyz
-    camera = new SlideCamera (cam_pos, cam_to, new Vector3(0,1,0), camera_slide_theta)
-
+  // calculates cameras position based off player ships center and
+  // hardcoded offsets
+  player.calculatePositionMovement()
+  let ship_world = player.trivao.buildMatrix (player_index)
+  let cam_pos = ship_world.multiplyVector(player.centroid.add (player.camera_offset)).xyz
+  
+  let cam_to = ship_world.multiplyVector(player.centroid).xyz
+  camera = new SlideCamera (cam_pos, cam_to, new Vector3(0,1,0), camera_slide_theta)
+  player.calculateOrientationMovement()
 }                                          
-
   // CHECK IF PLAYER CAN MOVE
   if (checkCollision (player.trivao)) {
     //camera.resetVelocity()
@@ -1026,7 +1027,7 @@ function movePlayerByGravity (object, distance, trivao_group, ship_center) {
  * @returns rough force of gravity float
  */
 function forceOfGravity (distance, mass) {
-  let force = ((mass)/Math.pow(distance,2)) * solarsystem_speed_scale
+  let force = (mass)/Math.pow(distance,2) * solarsystem_speed_scale
   return force
 } 
 
@@ -1219,12 +1220,15 @@ function onKeyDown(event) {
     keysPressed.d = true
   } if (event.key == 'q') {
     //camera.yaw(turnDelta)
+    //player.addRotation (new Vector3 (0,0,1))
   } if (event.key == 'e') {
     //camera.yaw(-turnDelta)
+    //player.addRotation (new Vector3 (0,0,-1))
   } if (event.key == '=' || keysPressed.up) {
     if (!bound_camera_mode) {
       //camera.adjustVelocityElevate (moveDelta)
-      player.addVelocityUp(moveDelta)
+      //player.addVelocityUp(moveDelta)
+      player.adjustCameraOffsetUp()
       keysPressed.up = true
     }
     else {
@@ -1234,7 +1238,8 @@ function onKeyDown(event) {
   } if (event.key ==  '-' || keysPressed.down) {
     if (!bound_camera_mode) {
       //camera.adjustVelocityElevate (-moveDelta)
-      player.addVelocityUp(-moveDelta)
+      //player.addVelocityUp(-moveDelta)
+      player.adjustCameraOffsetDown()
       keysPressed.down = true
     }
     else {
