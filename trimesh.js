@@ -252,14 +252,12 @@ export class TrimeshVaoGrouping extends TrimeshVao {
    * @param {vec3[]} textures texels of obj
    * @param {int} texture_index texture index of obj
    * @param {int} num_objects number objects in grouping
-   * @param {mat4} toWorldFromModels worldFromModel mat4s
    */
   constructor (positions, normals, indices, vao, textures, texture_index, num_objects) 
   {
     super (positions, normals, indices, vao, textures, num_objects)
     this.texture_index = texture_index
     this.num_objects = num_objects
-    this.toWorldFromModels = []
     this.bounding_box = null
     // all Vec3s o
     this.objects = []
@@ -276,9 +274,11 @@ export class TrimeshVaoGrouping extends TrimeshVao {
   }
 
   getObject (index) {return this.objects[index]}
+
   setObjects (index, objects) {
     this.objects = objects
   }
+
   addToObjects (object) {
     this.objects.push (object)
   }
@@ -331,7 +331,7 @@ export class TrimeshVaoGrouping extends TrimeshVao {
    * @param {*} degree 
    */
   addToRotationY (index, degree) {
-    this.rotations[index].set (1, degree + this.rotations[index].y)
+    this.rotations[index].set (1, degree + this.rotations[index].y % 360)
   }
 
   setRotationCenter (index, degree) {
@@ -357,7 +357,7 @@ export class TrimeshVaoGrouping extends TrimeshVao {
    */
   addToRotationZ (index, degree) {
     this.rotations[index].set (2, degree +
-      this.rotations[index].z)
+      this.rotations[index].z % 360)
   }
 
   setScale (index, scale) {
@@ -372,12 +372,13 @@ export class TrimeshVaoGrouping extends TrimeshVao {
 
     let scaleM = Matrix4.scalev(scale)
     let rotationM = Matrix4.identity()
-    if (rotation.x != 0)
-      rotationM = rotationM.multiplyMatrix (Matrix4.rotateX(rotation.x))
     if (rotation.z != 0)
       rotationM = rotationM.multiplyMatrix (Matrix4.rotateZ(rotation.z))
     if (rotation.y != 0)
       rotationM = rotationM.multiplyMatrix (Matrix4.rotateY(rotation.y))
+    if (rotation.x != 0)
+      rotationM = rotationM.multiplyMatrix (Matrix4.rotateX(rotation.x))
+
 
 
     let translationM = Matrix4.translate (translation.x,    
@@ -401,7 +402,7 @@ export class TrimeshVaoGrouping extends TrimeshVao {
    {
      let size = 0
      for (let i = 0; i < trimesh_vao_group_arr.length; i++) {
-       size += trimesh_vao_group_arr[i].size 
+       size += trimesh_vao_group_arr[i].num_objects 
      }
      return size
    }

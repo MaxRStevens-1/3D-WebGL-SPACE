@@ -5,6 +5,7 @@ import { VertexArray } from './vertex-array'
 import { Matrix4 } from './matrix'
 import { Vector3, Vector4 } from './vector'
 import { Terrain } from './terrain'
+import { PlayerObject } from './player'
 import { Trimesh, TrimeshVao, TrimeshVaoGrouping, getGroupLength } from './trimesh'
 import { Camera, SlideCamera, BoundCamera } from './camera'
 import { reserveDepthCubeTexture, initializeDepthProgram, createTexture2d, initializeDepthFbo, reserveDepthTexture} from './shadow'
@@ -21,10 +22,10 @@ let vao
 let clipFromEye
 let camera
 let camera_slide_theta = .01
-let moveDelta = .5//1
+let moveDelta = .05//1
 let turnDelta = 1
 let then = 0
-
+let done_rot = false
 let EARTH_RADIUS = 3958.8
 
 // SKYBOX
@@ -33,11 +34,12 @@ let skyboxVao
 
 // MIRROR SURFACE SHADER
 let shipShader
-let ship_scale = new Vector3 (.1, .1, .1)
+let ship_scale = .01//new Vector3 (.1, .1, .1)
+let player
 
 // PLANETS / SUN
 let solarsystem_scale = .01
-let solarsystem_speed_scale = 1
+let solarsystem_speed_scale = .1
 let earth_index
 let moon_index
 let mecury_index
@@ -352,7 +354,7 @@ function shadowMapPass (width, height, fbo) {
 function onResizeWindow() {
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.1, 
+  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.01, 
     1000000 * solarsystem_scale)
 }
 
@@ -550,8 +552,17 @@ void main() {
   })
   window.addEventListener('pointermove', (event) => {
     if (document.pointerLockElement && !bound_camera_mode) {
-      camera.yaw(-event.movementX * turnDelta)
-      camera.pitch(-event.movementY * turnDelta)
+      //camera.yaw(-event.movementX * turnDelta)
+      //camera.pitch(-event.movementY * turnDelta)
+      let rotation = new Vector3 (0,0,0)
+      if (Math.abs(player.current_rotation.x - event.movementY * turnDelta *.5) < 71.5)
+        rotation.set (0, -event.movementY * turnDelta * .5)
+      else if (player.current_rotation.x > 0)
+        player.maxValueRotationXReached(71.5)
+      else
+        player.maxValueRotationXReached (-71.5)
+      rotation.set (1, event.movementX * turnDelta *.5)
+      player.addRotation (rotation)
     }
     else if (document.pointerLockElement && bound_camera_mode)
     {
@@ -579,11 +590,15 @@ async function initializeObjects() {
     // SHIPS OFFSET CALCULATION
   let ship_offset = new Vector3(10,10,0)
   ship_offset.add (ship.centroid)
-  let ship_position = camera.position
-                      .add (camera.forward.scalarMultiply(ship_offset.x))
+  let ship_position = new Vector3 (100, 100, 100)
+                      //camera.position
+                      //.add (camera.forward.scalarMultiply(ship_offset.x))
                       //.add (camera.right.scalarMultiply (ship_offset.z)))
   ship.setTranslation (player_index,ship_position)
-  ship.setScale (player_index,ship_scale)
+  let scale = new Vector3(ship_scale, ship_scale, ship_scale)
+  ship.setScale (player_index, scale)
+  let zero = new Vector3 (0,0,0)
+  player = new PlayerObject (ship, player_index, ship_position, zero, 0.1, zero, .1)
   ship.position_point = ship_position;
 }
 
@@ -871,40 +886,40 @@ function createObject(lines, shader) {
  */
 function rotateInteractables(now) {
   // CHECK GRAVITY
-  let ship = objects[player_index]
   let spheres = interactables[celestial_bodies_index]
   if (!bound_camera_mode) {
     let sun = interactables[celestial_bodies_index].getObject(sun_index)
-    let ship_pos = ship.buildMatrix(player_index)
-    let ship_center = ship_pos.multiplyVector(ship.centroid).xyz
-    gravityUpdate (sun, spheres, ship, ship_pos, ship_center)
+    let ship_pos = player.trivao.buildMatrix(player.index)
+    let ship_center = ship_pos.multiplyVector(player.centroid).xyz
+    gravityUpdate (sun, spheres, player.trivao, ship_pos, ship_center)
   }
 
   rotateAllBodies (spheres.getObject(sun_index), spheres) 
   if (bound_camera_mode)
     camera = bound_camera.updateBoundSpherePosition () 
-  lightTarget = new Vector3 (0,0,1)//spheres.buildMatrix (earth_index).multiplyVector (spheres.centroid).xyz
+  lightTarget = camera.position
 
   
 if (!bound_camera_mode) {
-  // OFFSETS ON SCREEN
-    let ship_offset_x = 17
-    let ship_offset_z = 0
-    // ships position
-    let ship_position = camera.position
-                        .add (camera.forward.scalarMultiply(ship_offset_x))
-                        //.add (camera.right.scalarMultiply (ship_offset_x))
-    ship.position_point = ship_position;
-    ship.setTranslation (player_index,ship_position)
+    // calculates cameras position based off player ships center and
+    // hardcoded offsets
+    player.tickUpdate()
+    let ship_world = player.trivao.buildMatrix (player_index)
+    let cam_pos = ship_world.multiplyVector(player.centroid.add (new Vector3(0, 10, -30))).xyz
+    
+    let cam_to = ship_world.multiplyVector(player.centroid).xyz
+    camera = new SlideCamera (cam_pos, cam_to, new Vector3(0,1,0), camera_slide_theta)
+
 }                                          
 
   // CHECK IF PLAYER CAN MOVE
-  if (checkCollision (ship)) {
-    camera.resetVelocity()
+  if (checkCollision (player.trivao)) {
+    //camera.resetVelocity()
+    player.resetVelocity()
     console.log ("COLLISION DETECTED")
   }
   else {
-    camera.timeStepMove()
+    //camera.timeStepMove()
   }
 
   // LOG FPS
@@ -998,7 +1013,8 @@ function movePlayerByGravity (object, distance, trivao_group, ship_center) {
     .multiplyVector (trivao_group.centroid).xyz
   let gravity_direction = sphere_center.add(ship_center.inverse())
     .normalize().scalarMultiply(force)
-  camera.adjustVelocity (gravity_direction)
+  //camera.adjustVelocity (gravity_direction)
+  player.addVelocity (gravity_direction)
 }
 
 /**
@@ -1186,24 +1202,29 @@ function setPlanetBoundCamera (vao_index, obj_index) {
  */
 function onKeyDown(event) {
   if (event.key === 'ArrowUp' || event.key == 'w' || keysPressed.w) {
-    camera.adjustVelocityAdvance(moveDelta)
+    //camera.adjustVelocityAdvance(moveDelta)
+    player.addVelocityForward (-moveDelta)
     keysPressed.w = true
   } if (event.key === 'ArrowDown' || event.key == 's' || keysPressed.s) {
-    camera.adjustVelocityAdvance(-moveDelta)
+    //camera.adjustVelocityAdvance(-moveDelta)
+    player.addVelocityForward (moveDelta)
     keysPressed.s = true
   } if (event.key === 'ArrowLeft' || event.key == 'a' || keysPressed.a) {
-    camera.adjustVelocityStrafe(-moveDelta)
+    //camera.adjustVelocityStrafe(-moveDelta)
+    player.addVelocityRight (moveDelta)
     keysPressed.a = true
   } if (event.key === 'ArrowRight' || event.key == 'd' || keysPressed.d) {
-    camera.adjustVelocityStrafe(moveDelta)
+    //camera.adjustVelocityStrafe(moveDelta)
+    player.addVelocityRight (-moveDelta)
     keysPressed.d = true
   } if (event.key == 'q') {
-    camera.yaw(turnDelta)
+    //camera.yaw(turnDelta)
   } if (event.key == 'e') {
-    camera.yaw(-turnDelta)
+    //camera.yaw(-turnDelta)
   } if (event.key == '=' || keysPressed.up) {
     if (!bound_camera_mode) {
-      camera.adjustVelocityElevate (moveDelta)
+      //camera.adjustVelocityElevate (moveDelta)
+      player.addVelocityUp(moveDelta)
       keysPressed.up = true
     }
     else {
@@ -1212,7 +1233,8 @@ function onKeyDown(event) {
     }
   } if (event.key ==  '-' || keysPressed.down) {
     if (!bound_camera_mode) {
-      camera.adjustVelocityElevate (-moveDelta)
+      //camera.adjustVelocityElevate (-moveDelta)
+      player.addVelocityUp(-moveDelta)
       keysPressed.down = true
     }
     else {
@@ -1222,14 +1244,17 @@ function onKeyDown(event) {
   } if (event.key == 'h') {
     show_hitboxes = !show_hitboxes
   } if (event.key == ' ') {
-    camera.advance (3)
-    camera.resetVelocity()
+    //camera.advance (3)
+    //camera.resetVelocity()
+    player.resetVelocity()
   } if (event.key == 'l')
-    console.log ("playerpos=" + camera.position)
+    console.log ("playerpos=" + player.position)//camera.position)
   if (event.key == 'g') {
     draw_soi_spheres = !draw_soi_spheres
   } if (event.key == 'Enter') {
     bound_camera_mode = false
+    player.position = bound_camera.camera.position
+    player.resetVelocity()
   } if (event.key == 'c') {
     console.crash()
   }
@@ -1337,7 +1362,7 @@ function generateLightCameras () {
  */
 function getTextFromWorld () {
   //generateLightCameras()
-  clipFromLight = Matrix4.fovPerspective(90, 1, .1, max_shadow_distance);
+  clipFromLight = Matrix4.fovPerspective(90, 1, 0, max_shadow_distance);
   for (let i = 0; i < 6; i++) {
     if (i > 0)
       continue

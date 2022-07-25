@@ -141,13 +141,13 @@ export function generateSkybox() {
         vec3 eyeToPosition = normalize(mixWorldPosition - worldEyePosition);
         vec3 normal = normalize(mixWorldNormal);
         // ** MIRROR VERSION **
-        vec3 reflection = reflect(eyeToPosition, normal);
-        fragmentColor = texture(skybox, reflection);
+        //vec3 reflection = reflect(eyeToPosition, normal);
+        //fragmentColor = texture(skybox, reflection);
 
         // ** REFRACTION VERSION **
-        //float ratio = 1.0 / 1.53;
-        //vec3 refraction = refract (eyeToPosition, normal, ratio);
-        //fragmentColor = texture(skybox, refraction);
+        float ratio = 1.0 / 1.53;
+        vec3 refraction = refract (eyeToPosition, normal, ratio);
+        fragmentColor = texture(skybox, refraction);
       }
     `;
     let shaderProgram = new ShaderProgram(vertexSource, fragmentSource)
