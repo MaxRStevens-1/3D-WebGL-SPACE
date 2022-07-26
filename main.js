@@ -33,8 +33,8 @@ let skyboxVao
 
 
 // PLANETS / SUN
-let solarsystem_scale = .005
-let solarsystem_speed_scale = .1
+let solarsystem_scale = .001
+let solarsystem_speed_scale =.1
 let earth_index
 let moon_index
 let mecury_index
@@ -47,9 +47,9 @@ let neptune_index
 
 // MIRROR SURFACE SHADER
 let shipShader
-let ship_scale = .1 * solarsystem_scale
+let ship_scale = 1 * solarsystem_scale
 let player
-let moveDelta = .05 * solarsystem_speed_scale
+let moveDelta = 10 * solarsystem_speed_scale * solarsystem_scale
 
 
 // SHADOW
@@ -75,7 +75,6 @@ let sun_index = 0
 let celestial_bodies_index
 
 // BLING-FONG
-const albedo = [.6, .6, .6]
 const specularColor = [.3, .8, .9];
 const diffuseColor = [.1, .6, .9];
 const shininess = 80.0;
@@ -143,7 +142,6 @@ function render(k) {
   // DRAW HITBOXES IF OPTION SELECTED
   if (show_hitboxes)
   {
-    bounding_box.vao.bind()
     gl.depthMask(false);
     shaderProgram.setUniform3f('specularColor', .2, .4, .3)
     shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
@@ -153,14 +151,16 @@ function render(k) {
       const interactable = interactables[i]
       for (let j = 0; j < interactable.num_objects; j++) {
         const bounding_box = interactable.bounding_box
-        const pos = interactable.buildMatrix(j)//getMatrix (j)
+        bounding_box.vao.bind()
+        const pos = interactable.buildMatrix(j)
         // SET AS ATTRIBUTE
         shaderProgram.setUniformMatrix4('worldFromModel', pos)
         bounding_box.vao.drawIndexed(gl.TRIANGLES)
+        bounding_box.vao.unbind()
+
       }
     }
     gl.depthMask(true);
-    bounding_box.vao.unbind()
   }
   let sun = interactables[celestial_bodies_index]
   if (draw_soi_spheres) {
@@ -176,12 +176,17 @@ function render(k) {
         continue
       let cur_scale = sun.scales[index]
       let cur_rot = sun.rotations[index]
+      let cur_tran = sun.translations[index]
       sun.scales[index] = new Vector3(0,0,0).addConstant(current_obj.soi)
       sun.rotations[index] = new Vector3 (0,0,0)
-      shaderProgram.setUniformMatrix4 ('worldFromModel', sun.buildMatrix(index))
+      let mat = sun.buildMatrix (index)
+      sun.translations[index] = cur_tran.add(cur_tran.sub (mat.multiplyVector(sun.centroid).xyz))
+      mat = sun.buildMatrix (index)
+      shaderProgram.setUniformMatrix4 ('worldFromModel', mat)
       sun.vao.drawIndexed(gl.TRIANGLES)
-      sun.scales[index]=cur_scale
+      sun.scales[index] = cur_scale
       sun.rotations[index] = cur_rot
+      sun.translations[index] = cur_tran
       result = iterator.next()
     }
     sun.vao.unbind()
@@ -356,7 +361,7 @@ function shadowMapPass (width, height, fbo) {
 function onResizeWindow() {
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.001, 
+  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.0005, 
     1000000 * solarsystem_scale)
 }
 
@@ -616,7 +621,7 @@ async function initInteractables() {
   // CREATE SUN
   let offset = lightPosition
   celestial_bodies_index = 0
-  let scale_factor  = 2
+  let scale_factor  = 1
   let spheres = generateSphereObject (20, 20, scale_factor, offset, 3, space_objs.length)
   interactables.push (spheres)
   let sun = space_objs[sun_index]
@@ -1027,7 +1032,7 @@ function movePlayerByGravity (object, distance, trivao_group, ship_center) {
  * @returns rough force of gravity float
  */
 function forceOfGravity (distance, mass) {
-  let force = (mass)/Math.pow(distance,2) * solarsystem_speed_scale
+  let force = (mass)/Math.pow(distance,2) * solarsystem_speed_scale 
   return force
 } 
 
