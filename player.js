@@ -7,13 +7,12 @@ export class PlayerObject {
      * @param {TrimeshVaoGrouping} trivao 
      * @param {int} index 
      * @param {Vector3} position 
-     * @param {Vector3} rotation 
      * @param {float} rotation_theta 
-     * @param {Vector3} velocity 
      * @param {float} velocity_theta 
+     * @param {Vector3} camera_offset
      */
-    constructor (trivao, index, position, rotation, rotation_theta,
-         velocity, velocity_theta, camera_offset) {
+    constructor (trivao, index, position, rotation_theta, velocity_theta,
+         camera_offset) {
         this.trivao = trivao
         this.centroid = trivao.centroid
         this.index = index

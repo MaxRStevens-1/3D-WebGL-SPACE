@@ -384,7 +384,7 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     let translationM = Matrix4.translate (translation.x,    
       translation.y, translation.z)
     
-    return translationM.multiplyMatrix(rotationM).multiplyMatrix (scaleM)
+    return translationM.multiplyMatrix(scaleM).multiplyMatrix (rotationM)
   }
 
   setBoundingBox (bounding_box) {

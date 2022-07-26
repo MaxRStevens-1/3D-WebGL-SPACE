@@ -1,3 +1,4 @@
+import { Vector3 } from "./vector"
 export class SpaceObject {
     /**
      * 
@@ -84,3 +85,69 @@ export class SpaceObject {
         }
     }
 }
+
+/**
+ * parses an inputed text file, returns an formated space object list
+ * format of txt should be
+ * name,radius,Rotation_Speed,Orbit_speed,Orbit_Radius,Orbit_theta,Mass,Rotation X,Rotation Y,Rotation Z,Parent
+ * A child should NEVER come parent in input text
+ * @param {String} solarString 
+ * @returns  array list of SpaceObjects
+ */
+ export function parseSolarMap (solarString) {
+    solarString = solarString.replaceAll ('\r','')
+    let split_objects = solarString.split ('\n')
+    let object_map = new Map()
+    let object_list = []
+    for (let i = 0; i < split_objects.length; i++) {
+      let split_attributes = split_objects[i].split (',')
+      if (split_attributes.length != 12)
+        continue
+      // set strings to #'s
+      for (let x = 1; x < split_attributes.length; x++) {
+        if (x == 10)
+          continue 
+        split_attributes[x] = Number(split_attributes[x])
+      }
+      let tilt  = new Vector3 (split_attributes[7], split_attributes[8], 
+        split_attributes[9])
+      let parent = split_attributes[10]
+      if (parent.length < 1 || parent == 'null')
+        parent = null
+      let current_object = new SpaceObject (i, split_attributes[2], 
+        split_attributes[3], split_attributes[4], split_attributes[5], split_attributes[1],
+        parent, split_attributes[0], split_attributes[6], tilt)
+      if (current_object.parent != null) {
+        object_map.get (current_object.parent).addSatellite (current_object)
+        current_object.parent = object_map.get (current_object.parent)
+      }
+      object_list.push (current_object)
+      object_map.set (current_object.name, current_object)
+    }
+    return object_list
+  }
+
+
+  /**
+ * Sets parent obj and all chldrens index=>SpaceObject hash table.
+ * done to not have to iterate though all children to get an specific child.
+ * @param {SpaceObject} obj 
+ * @returns the combined SpaceObject map
+ */
+export function setSatelliteHashTable (obj) {
+
+    let local_map = new Map()
+    if (obj.num_satellites != 0 && obj.satellites != null) {
+      for (let i = 0; i < obj.num_satellites; i++) {
+        let child = obj.getSatellite(i)
+        local_map.set (child.index, child)
+        if (child.num_satellites > 0) {
+          let child_map = setSatelliteHashTable(child)
+          local_map = new Map([...child_map, ...local_map])
+        }
+      }
+    }
+    local_map.set (obj.index, obj)
+    obj.satellite_map = local_map
+    return local_map
+  } 
