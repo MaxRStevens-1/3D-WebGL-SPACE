@@ -35,6 +35,7 @@ let skyboxVao
 
 // PLANETS / SUN
 let solarsystem_scale = .001
+let relative_planet_size = 2
 let solarsystem_speed_scale =.1
 let earth_index
 let moon_index
@@ -50,7 +51,7 @@ let neptune_index
 let shipShader
 let ship_scale = .1 * solarsystem_scale
 let player
-let moveDelta = 10 * solarsystem_speed_scale * solarsystem_scale
+let moveDelta = 1 * solarsystem_speed_scale * solarsystem_scale
 
 
 // SHADOW
@@ -211,8 +212,6 @@ function render(k) {
   shaderProgram.setUniform1f('shininess', 100)
   shaderProgram.setUniform1f('ambientFactor', .3)
   shaderProgram.setUniform1i("depthTexture", 0);
-  //for (let k = 0; k < 6; k++) 
-  //{
     shaderProgram.setUniformMatrix4("textureFromWorld", texturesFromWorld[0]);
     for (let i = 0; i < interactables.length; i++) {
       const interactable = interactables[i]
@@ -372,8 +371,8 @@ function shadowMapPass (width, height, fbo) {
 function onResizeWindow() {
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.0005, 
-    1000000 * solarsystem_scale)
+  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.001, 
+    800000 * solarsystem_scale)
 }
 
 /**
@@ -580,8 +579,8 @@ async function initializeObjects() {
     // SHIPS OFFSET CALCULATION
   let ship_offset = new Vector3(10,10,0)
   ship_offset.add (ship.centroid)
-  let ship_position = new Vector3 (100, 100, 100)
-  ship.setTranslation (player_index,ship_position)
+  let ship_position = new Vector3 (100, 100, 100).scalarMultiply (solarsystem_scale)
+  ship.setTranslation (player_index, ship_position)
   let scale = new Vector3(ship_scale, ship_scale, ship_scale)
   ship.setScale (player_index, scale)
   let zero = new Vector3 (0,0,0)
@@ -636,6 +635,7 @@ function setTriVaoGroupObj (group_index, obj_index, space_obj, scale_factor)
   {
     let group = interactables[group_index]
     
+    console.log (solarsystem_scale)
     if (space_obj.parent != null)
       space_obj.soi = (space_obj.orbit_radius)  
         * Math.pow(space_obj.mass/space_obj.parent.mass, 2/5) * solarsystem_scale
@@ -646,13 +646,13 @@ function setTriVaoGroupObj (group_index, obj_index, space_obj, scale_factor)
     console.log ("and has orbit rad of " + (space_obj.orbit_radius*EARTH_RADIUS))
     console.log ("thats " + (space_obj.soi * EARTH_RADIUS * 1.60934 * (1/solarsystem_scale)) + " km")
     
-    space_obj.radius *= solarsystem_scale
-    space_obj.orbit_radius *= solarsystem_scale
+
+    space_obj.radius *= solarsystem_scale 
+    space_obj.orbit_radius *= solarsystem_scale 
     
     let rotation = space_obj.tilt
     let scale = space_obj.radius / scale_factor
-
-    group.setScale (obj_index, new Vector3 (scale, scale, scale))
+    group.setScale (obj_index, new Vector3 (scale, scale, scale).scalarMultiply(relative_planet_size))
     group.setRotationX (obj_index, rotation.x)
     group.setRotationY (obj_index, rotation.y)
     group.setRotationZ (obj_index, rotation.z)
@@ -698,29 +698,6 @@ function generateVisualHitBoxes () {
   }
 }
 
-
-/**
- * Creates and return an trimeshVao from inputed shader
- * @param {*} lines 
- * @param {*} ship_shader 
- * @returns 
- */
-function createShipMirrorObject (lines, ship_shader, num_objs) {
-  let obj_trimesh = Trimesh.readObjToJson(lines)
-  let obj_attributes = new VertexAttributes()
-  let positions = obj_trimesh.flat_positions()
-  let normals = obj_trimesh.flat_normals()
-  let indices = obj_trimesh.flat_indices()
-  obj_attributes.addAttribute('position', positions.length / 3, 3, positions)
-  obj_attributes.addAttribute('normal',   normals.length   / 3, 3, normals)
-  obj_attributes.addIndices   (indices)
-  let obj_vao = new VertexArray(ship_shader, obj_attributes)
-  let tri_vao_group = new TrimeshVaoGrouping  (obj_trimesh.positions,
-      obj_trimesh.normals, obj_trimesh.indices, 
-      obj_vao, null, null, num_objs)
-  return tri_vao_group
-}
-
 /**
  * Creates and returns an trimeshVao from loaded in obj file
  * @param {String} lines 
@@ -737,10 +714,10 @@ function createObject(lines, shader) {
   obj_attributes.addAttribute('normal',   normals.length   / 3, 3, normals)
   obj_attributes.addIndices  (indices)
   let obj_vao = new VertexArray(shader, obj_attributes)
-  let trivao = new TrimeshVaoGrouping  (obj_trimesh.positions,
+  let trivao_group = new TrimeshVaoGrouping  (obj_trimesh.positions,
                                obj_trimesh.normals, obj_trimesh.indices,
                                obj_vao, null, null, 1)
-  return trivao
+  return trivao_group
 }
 
 /**
@@ -1078,43 +1055,14 @@ function boundCameraHelper (key_input) {
 }
 
 /**
- * Generates light targets for shadows
- */
-function generateLightCameras () {
-  // x+
-  let lp = lightPosition
-  lightTargets.push (new Vector3 (lp.x + max_shadow_distance, lp.y, lp.z))
-  lightWorldUps.push (new Vector3 (0, 1, 0))
-  // x-
-  lightTargets.push (new Vector3 ( lp.x - max_shadow_distance, lp.y, lp.z))
-  lightWorldUps.push (new Vector3 (0, -1, 0))
-
-  // y+
-  lightTargets.push (new Vector3 ( lp.x, lp.y + max_shadow_distance, lp.z))
-  lightWorldUps.push (new Vector3 (0, 0, -1))
-  // y-
-  lightTargets.push (new Vector3 ( lp.x, lp.y - max_shadow_distance, lp.z))
-  lightWorldUps.push (new Vector3 (0, 0, 1))
-
-  // z+
-  lightTargets.push (new Vector3 ( lp.x, lp.y, lp.z + max_shadow_distance))
-  lightWorldUps.push (new Vector3 (0, 1, 0))
-  // z-
-  lightTargets.push (new Vector3 ( lp.x, lp.y, lp.z - max_shadow_distance))
-  lightWorldUps.push (new Vector3 (0, 1, 0))
-}
-
-
-/**
  * Shadows init.
  */
 function getTextFromWorld () {
-  //generateLightCameras()
   clipFromLight = Matrix4.fovPerspective(90, 1, 0, max_shadow_distance);
   for (let i = 0; i < 6; i++) {
     if (i > 0)
       continue
-    lightCamera = new Camera(lightPosition, lightTarget, new Vector3 (0,1,0))//lightTargets[i], lightWorldUps[i]);
+    lightCamera = new Camera(lightPosition, lightTarget, new Vector3 (0,1,0))
     if (lightsFromWorld.length == 0)
       lightsFromWorld.push( lightCamera.eyeFromWorld);
     else
