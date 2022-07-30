@@ -35,7 +35,7 @@ let skyboxVao
 
 // PLANETS / SUN
 let solarsystem_scale = .001
-let relative_planet_size = 2
+let relative_planet_size = 1
 let solarsystem_speed_scale =.1
 let earth_index
 let moon_index
@@ -49,7 +49,7 @@ let neptune_index
 
 // MIRROR SURFACE SHADER
 let shipShader
-let ship_scale = .1 * solarsystem_scale
+let ship_scale = .3 * solarsystem_scale * relative_planet_size
 let player
 let moveDelta = 1 * solarsystem_speed_scale * solarsystem_scale
 
@@ -372,7 +372,7 @@ function onResizeWindow() {
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
   clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.001, 
-    800000 * solarsystem_scale)
+    1000000 * solarsystem_scale)
 }
 
 /**
@@ -579,13 +579,13 @@ async function initializeObjects() {
     // SHIPS OFFSET CALCULATION
   let ship_offset = new Vector3(10,10,0)
   ship_offset.add (ship.centroid)
-  let ship_position = new Vector3 (100, 100, 100).scalarMultiply (solarsystem_scale)
+  let ship_position = new Vector3 (1000, 1000, 1000).scalarMultiply (solarsystem_scale)
   ship.setTranslation (player_index, ship_position)
   let scale = new Vector3(ship_scale, ship_scale, ship_scale)
   ship.setScale (player_index, scale)
   let zero = new Vector3 (0,0,0)
-  player = new PlayerObject (ship, player_index, ship_position, 0.1, 0.1, 
-    new Vector3(0, 10, -30))
+  player = new PlayerObject (ship, player_index, ship_position, 0.1, 0.2, 
+    new Vector3(0, 10, -30).scalarMultiply (4))
 }
 
 /**

@@ -183,10 +183,10 @@ export class BoundCamera {
    * @param {float} scale 
    */
   moveCameraCloser (scale) {
-    if (this.radius - this.base_scale_amount * scale > this.base_scale_amount * scale * 2)  
+    if (this.radius * .9 > this.base_scale_amount * scale * 2)  
     {
-      this.radius -= this.base_scale_amount*scale
-      this.base_distance_offset -= this.base_scale_amount*scale
+      this.radius *= .9
+      this.base_distance_offset *= .9
     }
   }
 
@@ -194,8 +194,8 @@ export class BoundCamera {
    * @param {float} scale 
    */
   moveCameraAway (scale) {
-    this.radius += this.base_scale_amount*scale
-    this.base_distance_offset += this.base_scale_amount*scale
+    this.radius *= 1.1
+    this.base_distance_offset *= 1.1
   }
 
   /**

@@ -88,6 +88,10 @@ export class PlayerObject {
     moveOrientationByRotation () {
         let current_adjustment = this.rotation_velocity.scalarMultiply (this.rotation_theta)
         this.current_rotation = this.current_rotation.add (current_adjustment)
+        if (Math.abs(this.current_rotation.x) > 71.5 && this.current_rotation.x > 0)
+            this.maxValueRotationXReached (71.5)
+        else if (Math.abs(this.current_rotation.x) > 71.5 && this.current_rotation.x > 0)
+            this.maxValueRotationXReached (-71.5)
         this.rotation_velocity = this.rotation_velocity.sub (current_adjustment)
     } 
 
