@@ -767,7 +767,9 @@ if (!bound_camera_mode) {
   const fps = 1 / deltaTime;             // compute frames per second
   if (fps < 58)
     console.log (fps)
-  fps_scaling = fps / ideal_fps
+  fps_scaling = ideal_fps / fps
+  if (isNaN(fps_scaling))
+    fps_scaling = 1
   // RENDER AND REQUEST 2 DRAW
   getTextFromWorld ()
   renderDepths(textDim, textDim, fbo)
@@ -803,9 +805,9 @@ if (!bound_camera_mode) {
   new_pos = new_pos.add (rotation_center)
   vao_group.setTranslation (space_obj.index, new_pos)
   space_obj.orbit_theta += space_obj.orbit_speed 
-    * solarsystem_speed_scale * (Math.PI/180) * ideal_fps
+    * solarsystem_speed_scale * (Math.PI/180) //* fps_scaling
   // place camera in new path of obj
-  vao_group.addToRotationY (index, space_obj.rotation_speed * solarsystem_speed_scale * ideal_fps)
+  vao_group.addToRotationY (index, space_obj.rotation_speed * solarsystem_speed_scale * fps_scaling)
 }
 
 /**
@@ -945,16 +947,16 @@ function setPlanetBoundCamera (vao_index, obj_index) {
  */
 function onKeyDown(event) {
   if (event.key === 'ArrowUp' || event.key == 'w' || keysPressed.w) {
-    player.addVelocityForward (-moveDelta * ideal_fps)
+    player.addVelocityForward (-moveDelta * fps_scaling)
     keysPressed.w = true
   } if (event.key === 'ArrowDown' || event.key == 's' || keysPressed.s) {
-    player.addVelocityForward (moveDelta * ideal_fps)
+    player.addVelocityForward (moveDelta * fps_scaling)
     keysPressed.s = true
   } if (event.key === 'ArrowLeft' || event.key == 'a' || keysPressed.a) {
-    player.addVelocityRight (moveDelta * ideal_fps)
+    player.addVelocityRight (moveDelta * fps_scaling)
     keysPressed.a = true
   } if (event.key === 'ArrowRight' || event.key == 'd' || keysPressed.d) {
-    player.addVelocityRight (-moveDelta * ideal_fps)
+    player.addVelocityRight (-moveDelta * fps_scaling)
     keysPressed.d = true
   } if (event.key == 'q') {
   } if (event.key == 'e') {
