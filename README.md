@@ -118,7 +118,6 @@ This is an example of how to list things you need to use the software and how to
 2. Install [Node.js](https://nodejs.org/en/download/)
    ```
 3. Navigate to repo in the directory and use the command "npm install vite"
-  ```
 4. After finished download run command "npm run start" to run program
   ```
 <p align="right">(<a href="#top">back to top</a>)</p>
