@@ -107,8 +107,12 @@ let keysPressed = {
 
 // SOI indicator
 let draw_soi_spheres = false
+// FPS speed scaling
+let fps_scaling = 1
+let ideal_fps = 60
+
 // Default render function
-function render(k) {
+function render() {
   gl.viewport(0, 0, canvas.width, canvas.height)
   gl.clearColor(0.6, 0.6, 0.9, 1)
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -763,6 +767,7 @@ if (!bound_camera_mode) {
   const fps = 1 / deltaTime;             // compute frames per second
   if (fps < 58)
     console.log (fps)
+  fps_scaling = fps / ideal_fps
   // RENDER AND REQUEST 2 DRAW
   getTextFromWorld ()
   renderDepths(textDim, textDim, fbo)
@@ -798,9 +803,9 @@ if (!bound_camera_mode) {
   new_pos = new_pos.add (rotation_center)
   vao_group.setTranslation (space_obj.index, new_pos)
   space_obj.orbit_theta += space_obj.orbit_speed 
-    * solarsystem_speed_scale * (Math.PI/180)
+    * solarsystem_speed_scale * (Math.PI/180) * ideal_fps
   // place camera in new path of obj
-  vao_group.addToRotationY (index, space_obj.rotation_speed * solarsystem_speed_scale)
+  vao_group.addToRotationY (index, space_obj.rotation_speed * solarsystem_speed_scale * ideal_fps)
 }
 
 /**
@@ -940,16 +945,16 @@ function setPlanetBoundCamera (vao_index, obj_index) {
  */
 function onKeyDown(event) {
   if (event.key === 'ArrowUp' || event.key == 'w' || keysPressed.w) {
-    player.addVelocityForward (-moveDelta)
+    player.addVelocityForward (-moveDelta * ideal_fps)
     keysPressed.w = true
   } if (event.key === 'ArrowDown' || event.key == 's' || keysPressed.s) {
-    player.addVelocityForward (moveDelta)
+    player.addVelocityForward (moveDelta * ideal_fps)
     keysPressed.s = true
   } if (event.key === 'ArrowLeft' || event.key == 'a' || keysPressed.a) {
-    player.addVelocityRight (moveDelta)
+    player.addVelocityRight (moveDelta * ideal_fps)
     keysPressed.a = true
   } if (event.key === 'ArrowRight' || event.key == 'd' || keysPressed.d) {
-    player.addVelocityRight (-moveDelta)
+    player.addVelocityRight (-moveDelta * ideal_fps)
     keysPressed.d = true
   } if (event.key == 'q') {
   } if (event.key == 'e') {
