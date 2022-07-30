@@ -42,9 +42,9 @@
     <br />
     <a href="https://github.com/MaxRStevens-1/3D-WebGL-SPACE">View Demo</a>
     ·
-    <a href="https://github.com/MaxRStevens-1/3D-WebGL-SPACE">Report Bug</a>
+    <a href="https://github.com/MaxRStevens-1/3D-WebGL-SPACE/issues">Report Bug</a>
     ·
-    <a href="https://github.com/MaxRStevens-1/3D-WebGL-SPACE">Request Feature</a>
+    <a href="https://github.com/MaxRStevens-1/3D-WebGL-SPACE/issues">Request Feature</a>
   </p>
 </div>
 
@@ -97,12 +97,6 @@ This is an Node Javascript WebGL project, no Three or Babylon, which creates an 
   [WebGL](https://get.webgl.org/)
 
 
-<!-- GETTING STARTED -->
-## Getting Started
-
-This is an example of how you may give instructions on setting up your project locally.
-To get a local copy up and running follow these simple example steps.
-
 ### Prerequisites
 
 This is an example of how to list things you need to use the software and how to install them.
@@ -133,9 +127,18 @@ This is an example of how to list things you need to use the software and how to
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+Start the program by navigating to the directory it is locating in, following the steps in the installation guide, and running the command "npm run start".
 
-_For more examples, please refer to the [Documentation](https://example.com)_
+Using the player ship view, movement is applied to forward, right, and up vectors based on wasd movement. Change Player orientation using the mouse or trackpad. Spacebar will set the current rotational and movement velocity to 0. Watch out for gravity, or attempt to get youself into an orbit around an planet. Use the +/- keys to zoom in and out.
+
+Pressing any number jey from 0-8, you can move yourself around the various planets and their moons in the Solar System. Pressing the same number again will cycle the camera to rotate around an moon from the parent object. 0 selects the Sun, 1 selects Mercury, and so on. Rotate yourself around the planet or moon using the mouse / trackpad. Use the +/- keys to zoom in and out. Pressing enter will unbind the camera from the currently viewed planet / moon and place the player ship in the cameras current location.
+
+Pressing the 'g' key will display the Spheres of Gravitional Influence of the various objects in the Solar System. 
+
+Pressing the 'h' key will display the axis unaligned bounding box for all objects.
+
+Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -148,7 +151,7 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 - [ ] Fixing visual artifacts at very large distance
 - [ ] Reducing oscillation of objects at very large distances
 
-See the [open issues](https://github.com/MaxRStevens-1/3D-WebGL-SPACE) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/MaxRStevens-1/3D-WebGL-SPACE/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
