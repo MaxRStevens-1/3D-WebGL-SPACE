@@ -144,10 +144,9 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 <!-- ROADMAP -->
 ## Roadmap
 
-- [ ] Feature 1
-- [ ] Feature 2
-- [ ] Feature 3
-    - [ ] Nested Feature
+- [ ] Free Camera
+- [ ] Fixing visual artifacts at very large distance
+- [ ] Reducing oscillation of objects at very large distances
 
 See the [open issues](https://github.com/MaxRStevens-1/3D-WebGL-SPACE) for a full list of proposed features (and known issues).
 
@@ -179,8 +178,8 @@ Project Link: [https://github.com/MaxRStevens-1/3D-WebGL-SPACE](https://github.c
 <!-- ACKNOWLEDGMENTS -->
 ## Acknowledgments
 
-* []()
-* []()
+* My Professor Chris Johnson and his [Textbook](https://howto3d.twodee.org/)
+* TigerNDV for his [3D Model Spaceship](https://sketchfab.com/3d-models/mother-spaceship-9e0e86c41ed24676a7c8b25fdfa002c0)
 * []()
 
 <p align="right">(<a href="#top">back to top</a>)</p>
