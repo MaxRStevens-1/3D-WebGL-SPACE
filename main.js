@@ -145,6 +145,7 @@ function render() {
   shaderProgram.setUniform3fv ('lightWorldPosition', lightPosition)
   // RESET TEXTURE
   shaderProgram.setUniform1i('normTexture', 0);
+  shaderProgram.setUniform1i ('do_simple_draw', 1)
   if (show_hitboxes)
   {
     gl.depthMask(false);
@@ -199,6 +200,8 @@ function render() {
     sun.vao.unbind()
   }
 
+
+  shaderProgram.setUniform1i ('do_simple_draw', 0)
   shaderProgram.setUniform3f('specularColor', .99, .99, .1)
   shaderProgram.setUniform3f('diffuseColor', .99, .99, .1)
   shaderProgram.setUniform1f('shininess', 30)
@@ -470,6 +473,8 @@ uniform vec3 lightWorldPosition;
 uniform float shininess;
 uniform float ambientFactor;
 
+uniform bool do_simple_draw;
+
 
 uniform sampler2D normTexture;
 uniform sampler2D depthTexture;
@@ -486,6 +491,10 @@ in mat4 eyeworld;
 out vec4 fragmentColor;
 
 void main() {
+  if (do_simple_draw) {
+    fragmentColor = vec4 (vec3(1),1);
+    return;
+  }
   vec3 normal = normalize(mixNormal);
   vec4 lightEyePosition = eyeworld * vec4(lightWorldPosition,1);
   vec3 lightDirection = normalize (lightEyePosition.xyz - mixPosition);
