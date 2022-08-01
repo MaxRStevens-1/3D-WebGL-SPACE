@@ -234,12 +234,14 @@ export class BoundCamera {
     if (test_y * test_y + bound_x * bound_x < bound_radius*bound_radius) 
       bound_y +=  movement_y * scale
 
+    if (new_x * new_x + bound_y*bound_y >= bound_radius * bound_radius) 
+      this.z_heading *= -1
+
     if (new_x*new_x + bound_y * bound_y >= bound_radius * bound_radius) 
       this.x_heading *= -1
     
-    if (new_x * new_x + bound_y*bound_y >= bound_radius * bound_radius) 
-      this.z_heading *= -1
     bound_x += movement_x * scale * this.x_heading
+
     this.bound_position = new Vector3 (bound_x, bound_y, this.bound_position.z)
   }
 

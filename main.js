@@ -10,7 +10,7 @@ import { Camera, SlideCamera, BoundCamera } from './camera'
 import { initializeDepthProgram, createTexture2d, initializeDepthFbo, reserveDepthTexture} from './shadow'
 import { generateCube} from './box_gen'
 import { generateSkybox, loadCubemap, skybox_shader_program, ship_shader} from './skybox'
-import { generateSphereObject } from './sphere.js'
+import { checkSphereDistance, generateSphereObject } from './sphere.js'
 import { SpaceObject, parseSolarMap, setSatelliteHashTable } from './SpaceObject.js'
 import { readObjFromFile, readImage } from './fileHelper'
 import { gravityUpdate } from './gravity'
@@ -159,37 +159,43 @@ function render() {
   }
   gl.depthMask(true);
 
-  let sun = interactables[celestial_bodies_index]
+  let sphere_vao = interactables[celestial_bodies_index]
   if (draw_soi_spheres) {
-    sun.vao.bind()
+    sphere_vao.vao.bind()
     shaderProgram.setUniform3f('diffuseColor', .627, .125, .947)
     let sun_object = interactables[celestial_bodies_index].getObject(sun_index)
     let iterator = sun_object[Symbol.iterator]()
     let result = iterator.next()
+    let ship_pos = player.trivao.buildMatrix(player.index)
+    let ship_center = ship_pos.multiplyVector(player.centroid).xyz
+
     while (!result.done) {
       let current_obj = result.value
       let index = current_obj.index
       if (current_obj.soi <= 0 )
         continue
-      
-      let cur_scale = sun.scales[index]
-      let cur_rot = sun.rotations[index]
-      let cur_tran = sun.translations[index]
-      sun.scales[index] = new Vector3(0,0,0).addConstant(current_obj.soi)
-      sun.rotations[index] = new Vector3 (0,0,0)
-      let mat = sun.buildMatrix(index)
-      sun.translations[index] = cur_tran.add(cur_tran
-        .sub (mat.multiplyVector(sun.centroid).xyz))
-      console.log ("vec="+sun.translations[index])
-      mat = sun.buildMatrixOtherTranslation(index, global_translation_offset)
+      let distance = checkSphereDistance (index, ship_center, sphere_vao, global_translation_offset)
+      if (distance > 4000 * solarsystem_scale)
+        shaderProgram.setUniform1i ('do_simple_draw', 1)
+      else
+        shaderProgram.setUniform1i ('do_simple_draw', 0)
+      let cur_scale = sphere_vao.scales[index]
+      let cur_rot = sphere_vao.rotations[index]
+      let cur_tran = sphere_vao.translations[index]
+      sphere_vao.scales[index] = new Vector3(0,0,0).addConstant(current_obj.soi)
+      sphere_vao.rotations[index] = new Vector3 (0,0,0)
+      let mat = sphere_vao.buildMatrix(index)
+      sphere_vao.translations[index] = cur_tran.add(cur_tran
+        .sub (mat.multiplyVector(sphere_vao.centroid).xyz))
+      mat = sphere_vao.buildMatrixOtherTranslation(index, global_translation_offset)
       shaderProgram.setUniformMatrix4 ('worldFromModel', mat)
-      sun.vao.drawIndexed(gl.TRIANGLES)
-      sun.scales[index] = cur_scale
-      sun.rotations[index] = cur_rot
-      sun.translations[index] = cur_tran
+      sphere_vao.vao.drawIndexed(gl.TRIANGLES)
+      sphere_vao.scales[index] = cur_scale
+      sphere_vao.rotations[index] = cur_rot
+      sphere_vao.translations[index] = cur_tran
       result = iterator.next()
     }
-    sun.vao.unbind()
+    sphere_vao.vao.unbind()
   }
 
 
@@ -200,11 +206,11 @@ function render() {
   shaderProgram.setUniform1f('ambientFactor', .99)
   shaderProgram.setUniform1i('normTexture', 3);
   
-  let sun_position = sun.buildMatrixOtherTranslation(sun_index, global_translation_offset)
+  let sun_position = sphere_vao.buildMatrixOtherTranslation(sun_index, global_translation_offset)
   shaderProgram.setUniformMatrix4 ('worldFromModel', sun_position)
-  sun.vao.bind()
-  sun.vao.drawIndexed (gl.TRIANGLES)
-  sun.vao.unbind()
+  sphere_vao.vao.bind()
+  sphere_vao.vao.drawIndexed (gl.TRIANGLES)
+  sphere_vao.vao.unbind()
 
   shaderProgram.setUniform3f('specularColor', .8, .9, .1)
   shaderProgram.setUniform3f('diffuseColor', .9, .9, .9)
@@ -371,7 +377,7 @@ function onResizeWindow() {
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
   clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.001, 
-    1000000 * solarsystem_scale)
+    10000000 * solarsystem_scale)
 }
 
 /**
@@ -484,6 +490,11 @@ out vec4 fragmentColor;
 
 void main() {
 
+  if (do_simple_draw) {
+    fragmentColor = vec4(diffuseColor, 1.0); 
+    return;
+  }
+
   vec3 normal = normalize(mixNormal);
   vec4 lightEyePosition = eyeworld * vec4(lightWorldPosition,1);
   vec3 lightDirection = normalize (lightEyePosition.xyz - mixPosition);
@@ -521,8 +532,6 @@ void main() {
   // diffuse
   vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor * shadowFactor;
   vec3 rgb = ambient + diffuse + specular;
-  if (do_simple_draw)
-    rgb = ambient + (1.0 - ambientFactor) * litness;
   fragmentColor = realTexture * vec4(rgb, 1.0); 
 }
   `;
@@ -587,7 +596,6 @@ async function initializeObjects() {
   ship.setTranslation (player_index, ship_position)
   let scale = new Vector3(ship_scale, ship_scale, ship_scale)
   ship.setScale (player_index, scale)
-  let zero = new Vector3 (0,0,0)
   player = new PlayerObject (ship, player_index, ship_position, 0.1, 0.2, 
     new Vector3(0, 10, -30).scalarMultiply (4))
 }
@@ -812,6 +820,7 @@ if (!bound_camera_mode) {
   vao_group.setTranslation (space_obj.index, new_pos)
   space_obj.orbit_theta += space_obj.orbit_speed 
     * solarsystem_speed_scale * (Math.PI/180) * fps_scaling
+  vao_group.addToRotationY (index, space_obj.rotation_speed * solarsystem_speed_scale * fps_scaling)
   // place camera in new path of obj
 }
 
