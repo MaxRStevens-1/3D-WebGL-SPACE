@@ -205,11 +205,12 @@ export class BoundCamera {
    * @param {float} radius 
    * @param {float} scale 
    */
-  setBoundPosition (vao_group, index, radius, scale) {
+  setBoundPosition (vao_group, index, radius, scale, translation_offset) {
     this.vao_group = vao_group
     this.bound_obj_index = index
     this.radius = radius * this.distance_multiplier + this.base_distance_offset * scale
     this.bound_position = new Vector3 (0,0,0)
+    this.updateBoundSpherePosition (translation_offset)
   }
 
   /**
@@ -248,7 +249,7 @@ export class BoundCamera {
    * @param {int} index 
    * @returns 
    */
-  updateBoundSpherePosition () {
+  updateBoundSpherePosition (translation_offset) {
     let bound_x = this.bound_position.x
     let bound_y = this.bound_position.y
     let bound_radius = this.radius
@@ -260,7 +261,7 @@ export class BoundCamera {
     let bound_z = Math.sqrt (bound_radius*bound_radius - bound_x*bound_x - bound_y*bound_y)
       * this.z_heading
     this.bound_position =  new Vector3 (bound_x, bound_y, -bound_z)
-    let center = this.vao_group.buildMatrix (this.bound_obj_index)
+    let center = this.vao_group.buildMatrixOtherTranslation (this.bound_obj_index, translation_offset)
       .multiplyVector (this.vao_group.centroid).xyz
     let p_position = this.bound_position.add (center)
     this.camera = new SlideCamera (p_position, center, new Vector3 (0,1,0), this.time_delta)

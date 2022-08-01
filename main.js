@@ -31,12 +31,10 @@ let EARTH_RADIUS = 3958.8
 let skyboxShaderProgram
 let skyboxVao
 
-
-
 // PLANETS / SUN
 let solarsystem_scale = .001
 let relative_planet_size = 1
-let solarsystem_speed_scale =.1
+let solarsystem_speed_scale = .1
 let earth_index
 let moon_index
 let mecury_index
@@ -52,7 +50,6 @@ let shipShader
 let ship_scale = .3 * solarsystem_scale * relative_planet_size
 let player
 let moveDelta = 1 * solarsystem_speed_scale * solarsystem_scale
-
 
 // SHADOW
 let texturesFromWorld = []
@@ -71,16 +68,9 @@ let lightFromWorld;
 let lightsFromWorld = []
 let clipFromLight;
 
-
 // LIGHT
 let sun_index = 0  
 let celestial_bodies_index
-
-// BLING-FONG
-const specularColor = [.3, .8, .9];
-const diffuseColor = [.1, .6, .9];
-const shininess = 80.0;
-const ambientFactor = 0.7;
 
 // OBJECTS
 const interactables = [];
@@ -94,6 +84,7 @@ let bound_camera_mode = false
 let bound_camera
 let bound_object_iterator
 let bound_parent_index
+
 
 // KEYPRESSES
 let keysPressed = {
@@ -110,6 +101,8 @@ let draw_soi_spheres = false
 // FPS speed scaling
 let fps_scaling = 1
 let ideal_fps = 60
+// Global Offset Variables
+let global_translation_offset = new Vector3 (0,0,0)
 
 // Default render function
 function render() {
@@ -134,10 +127,10 @@ function render() {
   shaderProgram.bind()
 
   // Bling-Fong basic init
-  shaderProgram.setUniform3f('specularColor', specularColor[0], specularColor[1], specularColor[2])
-  shaderProgram.setUniform3f('diffuseColor', diffuseColor[0], diffuseColor[1], diffuseColor[2])
-  shaderProgram.setUniform1f('shininess', shininess)
-  shaderProgram.setUniform1f('ambientFactor', ambientFactor)
+  shaderProgram.setUniform3f('specularColor', 0, 0, 0)
+  shaderProgram.setUniform3f('diffuseColor', 0, 0, 0)
+  shaderProgram.setUniform1f('shininess', 80)
+  shaderProgram.setUniform1f('ambientFactor', .4)
   shaderProgram.setUniformMatrix4('clipFromEye', clipFromEye)
   shaderProgram.setUniformMatrix4('eyeFromWorld', camera.eyeFromWorld)
   shaderProgram.setUniformMatrix4('worldFromModel', Matrix4.identity())
@@ -146,34 +139,29 @@ function render() {
   // RESET TEXTURE
   shaderProgram.setUniform1i('normTexture', 0);
   shaderProgram.setUniform1i ('do_simple_draw', 1)
+  gl.depthMask(false);
   if (show_hitboxes)
   {
-    gl.depthMask(false);
-    shaderProgram.setUniform3f('specularColor', .2, .4, .3)
-    shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-    shaderProgram.setUniform1f('shininess', 1000000000)
-    shaderProgram.setUniform1f('ambientFactor', .6)
+    shaderProgram.setUniform3f('diffuseColor', 1, 0, 0)
     for (let i = 0; i < interactables.length; i++) {
       const interactable = interactables[i]
       for (let j = 0; j < interactable.num_objects; j++) {
         const bounding_box = interactable.bounding_box
         bounding_box.vao.bind()
-        const pos = interactable.buildMatrix(j)
+        const pos = interactable.buildMatrixOtherTranslation(j, global_translation_offset)
         shaderProgram.setUniformMatrix4('worldFromModel', pos)
         bounding_box.vao.drawIndexed(gl.TRIANGLES)
         bounding_box.vao.unbind()
 
       }
     }
-    gl.depthMask(true);
   }
+  gl.depthMask(true);
+
   let sun = interactables[celestial_bodies_index]
   if (draw_soi_spheres) {
     sun.vao.bind()
-    shaderProgram.setUniform3f('specularColor', .2, .4, .3)
-    shaderProgram.setUniform3f('diffuseColor', .6, .6, .3)
-    shaderProgram.setUniform1f('shininess', 1000000000)
-    shaderProgram.setUniform1f('ambientFactor', .6)
+    shaderProgram.setUniform3f('diffuseColor', .627, .125, .947)
     let sun_object = interactables[celestial_bodies_index].getObject(sun_index)
     let iterator = sun_object[Symbol.iterator]()
     let result = iterator.next()
@@ -187,9 +175,11 @@ function render() {
       let cur_tran = sun.translations[index]
       sun.scales[index] = new Vector3(0,0,0).addConstant(current_obj.soi)
       sun.rotations[index] = new Vector3 (0,0,0)
-      let mat = sun.buildMatrix (index)
-      sun.translations[index] = cur_tran.add(cur_tran.sub (mat.multiplyVector(sun.centroid).xyz))
-      mat = sun.buildMatrix (index)
+      let mat = sun.buildMatrix(index)
+      sun.translations[index] = cur_tran.add(cur_tran
+        .sub (mat.multiplyVector(sun.centroid).xyz))
+      
+      mat = sun.buildMatrixOtherTranslation(index, global_translation_offset)
       shaderProgram.setUniformMatrix4 ('worldFromModel', mat)
       sun.vao.drawIndexed(gl.TRIANGLES)
       sun.scales[index] = cur_scale
@@ -204,11 +194,11 @@ function render() {
   shaderProgram.setUniform1i ('do_simple_draw', 0)
   shaderProgram.setUniform3f('specularColor', .99, .99, .1)
   shaderProgram.setUniform3f('diffuseColor', .99, .99, .1)
-  shaderProgram.setUniform1f('shininess', 30)
+  shaderProgram.setUniform1f('shininess', 100000000000000)
   shaderProgram.setUniform1f('ambientFactor', .99)
   shaderProgram.setUniform1i('normTexture', 3);
   
-  let sun_position = sun.buildMatrix(sun_index)
+  let sun_position = sun.buildMatrixOtherTranslation(sun_index, global_translation_offset)
   shaderProgram.setUniformMatrix4 ('worldFromModel', sun_position)
   sun.vao.bind()
   sun.vao.drawIndexed (gl.TRIANGLES)
@@ -216,7 +206,7 @@ function render() {
 
   shaderProgram.setUniform3f('specularColor', .8, .9, .1)
   shaderProgram.setUniform3f('diffuseColor', .9, .9, .9)
-  shaderProgram.setUniform1f('shininess', 100)
+  shaderProgram.setUniform1f('shininess', 1000000000000)
   shaderProgram.setUniform1f('ambientFactor', .3)
   shaderProgram.setUniform1i("depthTexture", 0);
     shaderProgram.setUniformMatrix4("textureFromWorld", texturesFromWorld[0]);
@@ -228,7 +218,7 @@ function render() {
           continue
         if (i == 1)
           continue
-        const pos = interactable.buildMatrix(j)
+        const pos = interactable.buildMatrixOtherTranslation(j, global_translation_offset)
         // SET AS ATTRIBUTE
         shaderProgram.setUniformMatrix4('worldFromModel', pos)
         // sphere index
@@ -268,7 +258,7 @@ function render() {
       const object = objects[i]
       object.vao.bind()
       for (let j = 0; j < object.num_objects; j++) {
-        const pos = object.buildMatrix (j);
+        const pos = object.buildMatrix(j);
         // SET AS ATTRIBUTE
         shipShader.setUniformMatrix4('worldFromModel', pos)
         object.vao.drawIndexed(gl.TRIANGLES)
@@ -301,7 +291,7 @@ function renderDepths(width, height, fbo) {
     for (let j = 0; j < interactable.num_objects; j++) {
       //if (i == celestial_bodies_index && j == sun_index)
         //continue
-      const pos = interactable.buildMatrix(j)
+      const pos = interactable.buildMatrixOtherTranslation(j, global_translation_offset)
       depthProgram.setUniformMatrix4('worldFromModel', pos)
       interactable.vao.drawIndexed(gl.TRIANGLES)
     }
@@ -312,7 +302,7 @@ function renderDepths(width, height, fbo) {
     const object = objects[i]
     object.vao.bind()
     for (let j = 0; j < object.num_objects; j++) {
-      const pos = object.buildMatrix (j)
+      const pos = object.buildMatrix(j)
       depthProgram.setUniformMatrix4('worldFromModel', pos)
       object.vao.drawIndexed(gl.TRIANGLES)
     }
@@ -346,7 +336,7 @@ function shadowMapPass (width, height, fbo) {
       for (let j = 0; j < interactable.num_objects; j++) {
         if (i == celestial_bodies_index && j == sun_index)
           continue
-        const pos = interactable.buildMatrix(j)//.getMatrix (j)
+        const pos = interactable.buildMatrix(j)
         depthProgram.setUniformMatrix4('worldFromModel', pos)
         interactable.vao.bind()
         interactable.vao.drawIndexed(gl.TRIANGLES)
@@ -358,7 +348,7 @@ function shadowMapPass (width, height, fbo) {
       object.vao.bind()
       for (let j = 0; j < objects.num_objects; j++) {
         const object = objects[i]
-        const pos = object.buildMatrix (j)
+        const pos = object.buildMatrix(j)
         depthProgram.setUniformMatrix4('worldFromModel', pos)
         object.vao.drawIndexed(gl.TRIANGLES)
       }
@@ -492,7 +482,7 @@ out vec4 fragmentColor;
 
 void main() {
   if (do_simple_draw) {
-    fragmentColor = vec4 (vec3(1),1);
+    fragmentColor = vec4 (diffuseColor,1);
     return;
   }
   vec3 normal = normalize(mixNormal);
@@ -540,8 +530,9 @@ void main() {
   shaderProgram = new ShaderProgram(vertexSource, fragmentSource)
   vao = new VertexArray(shaderProgram, attributes)
 
-  await initInteractables()
   await initializeObjects()
+
+  await initInteractables()
 
 
 
@@ -627,7 +618,7 @@ async function initInteractables() {
   neptune_index  = uranus_index + 1
   moon_index = neptune_index + 1
   interactables[celestial_bodies_index].addToObjects (sun)
-  lightPosition = interactables[celestial_bodies_index].buildMatrix(sun_index)
+  lightPosition = interactables[celestial_bodies_index].buildMatrixOtherTranslation(sun_index, global_translation_offset)
     .multiplyVector (interactables[0].centroid).xyz
   for (let i = space_objs.length - 1; i >= 0; i--) {
     setTriVaoGroupObj (celestial_bodies_index, i, space_objs[i], scale_factor)
@@ -744,27 +735,28 @@ function updateEverything(now) {
     let sun = spheres.getObject(sun_index)
     let ship_pos = player.trivao.buildMatrix(player.index)
     let ship_center = ship_pos.multiplyVector(player.centroid).xyz
-    gravityUpdate (sun, spheres, player.trivao, ship_pos, ship_center, spheres, solarsystem_scale, player)
+    gravityUpdate (sun, spheres, player.trivao, ship_pos, ship_center, spheres, solarsystem_scale, player, global_translation_offset)
   }
 
-  rotateAllBodies (spheres.getObject(sun_index), spheres) 
-  if (bound_camera_mode)
-    camera = bound_camera.updateBoundSpherePosition () 
+  rotateAllBodies (spheres.getObject(sun_index), spheres)
+  if (bound_camera_mode) {
+    camera = bound_camera.updateBoundSpherePosition (global_translation_offset) 
+  }
   lightTarget = camera.position
 
   
 if (!bound_camera_mode) {
   player.calculatePositionMovement()
-  let ship_world = player.trivao.buildMatrix (player.index)
+  let ship_world = player.trivao.buildMatrix(player.index)
   let cam_pos = ship_world.multiplyVector(player.centroid.add (player.camera_offset)).xyz
   
   let cam_to = ship_world.multiplyVector(player.centroid).xyz
   camera = new SlideCamera (cam_pos, cam_to, new Vector3(0,1,0), camera_slide_theta)
   player.calculateOrientationMovement()
-}                                          
+  global_translation_offset = player.position
+}
   // CHECK IF PLAYER CAN MOVE
   if (checkCollision (player.trivao)) {
-    //camera.resetVelocity()
     player.resetVelocity()
     console.log ("COLLISION DETECTED")
   }
@@ -780,6 +772,9 @@ if (!bound_camera_mode) {
   if (isNaN(fps_scaling))
     fps_scaling = 1
   // RENDER AND REQUEST 2 DRAW
+  lightPosition = interactables[celestial_bodies_index].buildMatrixOtherTranslation(sun_index, global_translation_offset)
+  .multiplyVector (interactables[0].centroid).xyz
+
   getTextFromWorld ()
   renderDepths(textDim, textDim, fbo)
   render()
@@ -798,15 +793,18 @@ if (!bound_camera_mode) {
     }
   }
   let rotation_center
+  let index = space_obj.index
   if (space_obj.parent == null) {
-    rotation_center =lightPosition
+    rotation_center = lightPosition
+    vao_group.addToRotationY (index, space_obj.rotation_speed * solarsystem_speed_scale * fps_scaling)
+    return
   }
   else {
-    rotation_center = vao_group.buildMatrix (space_obj.parent.index)
+    rotation_center = vao_group.buildMatrix(space_obj.parent.index)
       .multiplyVector (vao_group.centroid)
   }
-  let index = space_obj.index
   let scaled_radius = space_obj.orbit_radius
+
   let theta = space_obj.orbit_theta
   let new_x = Math.cos (theta) * scaled_radius
   let new_z = Math.sin (theta) * scaled_radius
@@ -814,9 +812,8 @@ if (!bound_camera_mode) {
   new_pos = new_pos.add (rotation_center)
   vao_group.setTranslation (space_obj.index, new_pos)
   space_obj.orbit_theta += space_obj.orbit_speed 
-    * solarsystem_speed_scale * (Math.PI/180) //* fps_scaling
+    * solarsystem_speed_scale * (Math.PI/180) * fps_scaling
   // place camera in new path of obj
-  vao_group.addToRotationY (index, space_obj.rotation_speed * solarsystem_speed_scale * fps_scaling)
 }
 
 /**
@@ -832,7 +829,7 @@ function checkCollision (object, index) {
     for (let j = 0; j < interactable.num_objects; j++) {
       let c_obj = interactable
       let c_hitbox = interactable.getBoundingBox()
-      let pos = interactable.buildMatrix(j)//.getMatrix(j)
+      let pos = interactable.buildMatrix(j)
       if (c_obj == null || c_hitbox == null) {
         console.log ("Bad obj in collision check")
         continue
@@ -924,11 +921,16 @@ function checkObjectToObjectCollision (input_obj, pos_mat) {
  */
 function setPlanetBoundCamera (vao_index, obj_index) {
   bound_camera = new BoundCamera(camera, camera_slide_theta)
-  let obj = interactables[vao_index].getObject(sun_index)
+  let current_trivao = interactables[vao_index]
+  let obj = current_trivao.getObject(sun_index)
+  player.resetVelocity()
   let radius = obj.radius
   if (obj.getChild (obj_index) != null)
     radius = obj.getChild (obj_index).radius
-  bound_camera.setBoundPosition (interactables[vao_index], obj_index, radius, solarsystem_scale)
+  bound_camera.setBoundPosition (current_trivao, obj_index, radius, solarsystem_scale, global_translation_offset)
+  let mat = current_trivao.buildMatrix (obj_index)
+  global_translation_offset = mat.multiplyVector (current_trivao.centroid).xyz
+  global_translation_offset.set (1, 0)
   bound_camera_mode = true
 }
 
@@ -989,13 +991,34 @@ function onKeyDown(event) {
     show_hitboxes = !show_hitboxes
   } if (event.key == ' ') {
     player.resetVelocity()
-  } if (event.key == 'l')
-    console.log ("playerpos=" + player.position)
+  } if (event.key == 'l') {
+    console.log ("___________________________")
+
+    console.log ("playerpos = " + player.position)
+    console.log ("player translation =" +player.trivao.translations[player_index])
+    console.log ("camera position = " + camera.position)
+    console.log ("global offset val = " + global_translation_offset)
+    if (bound_camera_mode) {
+      let trivao = interactables[celestial_bodies_index]
+      let s_ind = bound_camera.bound_obj_index
+      console.log (s_ind)
+      console.log (juipter_index)
+      let normal_center = trivao.buildMatrix (s_ind).multiplyVector (trivao.centroid).xyz
+      let adjusted_center = trivao.buildMatrixOtherTranslation (s_ind, global_translation_offset)
+        .multiplyVector (trivao.centroid).xyz
+      let camera_center = trivao.buildMatrixOtherTranslation (s_ind, camera.position)
+        .multiplyVector (trivao.centroid).xyz
+      console.log ("realspace center is " + normal_center)
+      console.log ("adjusted is " + adjusted_center)
+      console.log ("camera adjusted is " + camera_center)
+    }
+    console.log ("___________________________")
+  }
   if (event.key == 'g') {
     draw_soi_spheres = !draw_soi_spheres
   } if (event.key == 'Enter') {
     bound_camera_mode = false
-    player.position = bound_camera.camera.position
+    player.position = global_translation_offset//bound_camera.camera.position
     player.resetVelocity()
   } if (event.key == 'c') {
     console.crash()
@@ -1057,7 +1080,9 @@ function boundCameraHelper (key_input) {
     bound_parent_index = space_obj_index
     bound_object_iterator = interactables[celestial_bodies_index]
       .getObject(sun_index).getChild(space_obj_index)[Symbol.iterator]()
+    
     setPlanetBoundCamera (celestial_bodies_index, space_obj_index)
+
   } else {
     let next_child = bound_object_iterator.next()
     if (!next_child.done)

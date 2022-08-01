@@ -10,13 +10,13 @@ import { Matrix4 } from './matrix'
  * @param {float} scale
  * @param {PlayerObject} player
  */
- function movePlayerByGravity (object, distance, trivao_group, ship_center, scale, player) {
+ function movePlayerByGravity (object, distance, trivao_group, ship_center, scale, player, translation_offset) {
     // calculate force of gravity
     distance = distance * (1/scale)
     let force = forceOfGravity (distance, object.mass, scale)  
     // calculate unit vector between pointing from ship to sphere
     // B - A / | B - A |
-    let sphere_center = trivao_group.buildMatrix (object.index)
+    let sphere_center = trivao_group.buildMatrixOtherTranslation (object.index, translation_offset)
       .multiplyVector (trivao_group.centroid).xyz
     let gravity_direction = sphere_center.add(ship_center.inverse())
       .normalize().scalarMultiply(force)
@@ -51,21 +51,21 @@ import { Matrix4 } from './matrix'
  * @param {PlayerObject} player
 */
  export function gravityUpdate (object, trivao_group, ship, ship_position,
-     ship_center, bodies, scale, player) {
+     ship_center, bodies, scale, player, translation_offset) {
     let objectWithinDistance = null
     let withinDistance = -1
     if (object.num_satellites > 0 && object.satellites != null) {
       for (let i = 0; i < object.num_satellites; i++) {
         let sat = object.getSatellite (i)
         let withinObject = gravityUpdate (sat, trivao_group, ship, ship_position, ship_center,
-            bodies, scale, player)
+            bodies, scale, player, translation_offset)
         if (withinObject != null) {
           objectWithinDistance = withinObject[0]
           withinDistance = withinObject[1]
         }
       }
     }
-    let distance = Math.max(checkSphereDistance (object.index, ship_center, bodies),
+    let distance = Math.max(checkSphereDistance (object.index, ship_center, bodies, translation_offset),
      object.radius/3)
     if (object.parent == null) {
       if (withinDistance == -1)
@@ -73,7 +73,7 @@ import { Matrix4 } from './matrix'
       if (objectWithinDistance == null)
         objectWithinDistance = object
       movePlayerByGravity (objectWithinDistance, withinDistance,
-        trivao_group, ship_center, scale, player)
+        trivao_group, ship_center, scale, player, translation_offset)
     }
     if (distance < object.soi)
       return [object, distance]

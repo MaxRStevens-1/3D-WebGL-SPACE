@@ -364,7 +364,40 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     this.scales[index] = scale
   }
 
-  // builds position matrix from transformations, rotations, and scales
+  /**
+   * Builds World Position Matrix the same way as BuildMatrix,
+   * however input translation is subtracted from current translation
+   * @param {int} index 
+   * @param {Vector3} translation 
+   * @returns World Position Matrix
+   */
+  buildMatrixOtherTranslation (index, input_translation) {
+    let translation = this.translations[index].sub (input_translation)
+    let rotation = this.rotations[index]
+    let scale = this.scales[index]
+
+    let scaleM = Matrix4.scalev(scale)
+    let rotationM = Matrix4.identity()
+    if (rotation.z != 0)
+      rotationM = rotationM.multiplyMatrix (Matrix4.rotateZ(rotation.z))
+    if (rotation.y != 0)
+      rotationM = rotationM.multiplyMatrix (Matrix4.rotateY(rotation.y))
+    if (rotation.x != 0)
+      rotationM = rotationM.multiplyMatrix (Matrix4.rotateX(rotation.x))
+
+    let translationM = Matrix4.translate (translation.x,    
+      translation.y, translation.z)
+    
+    return translationM.multiplyMatrix(scaleM).multiplyMatrix (rotationM)
+  }
+
+  /**
+   * Builds world position matrix from rotation, scale, and translation of obj
+   * Rotates in ZYX order, is build by 
+   * Translation X Scale X Rotation
+   * @param {int} index 
+   * @returns World Position Matrix
+   */
   buildMatrix (index) {
     let translation = this.translations[index]
     let rotation = this.rotations[index]
@@ -378,8 +411,6 @@ export class TrimeshVaoGrouping extends TrimeshVao {
       rotationM = rotationM.multiplyMatrix (Matrix4.rotateY(rotation.y))
     if (rotation.x != 0)
       rotationM = rotationM.multiplyMatrix (Matrix4.rotateX(rotation.x))
-
-
 
     let translationM = Matrix4.translate (translation.x,    
       translation.y, translation.z)

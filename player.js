@@ -114,7 +114,6 @@ export class PlayerObject {
     tickUpdate () {
         this.calculateDirectionVectors ()
         this.movePlayerByVelocity ()
-        this.trivao.setTranslation (this.index, new Vector3(this.position.x, this.position.y, this.position.z))
         this.moveOrientationByRotation ()
         let trivao_rot = new Vector4()
         trivao_rot.setall(this.current_rotation.x, this.current_rotation.y, this.current_rotation.z,0)
@@ -124,7 +123,6 @@ export class PlayerObject {
     calculatePositionMovement () {
         this.calculateDirectionVectors ()
         this.movePlayerByVelocity ()
-        this.trivao.setTranslation (this.index, new Vector3(this.position.x, this.position.y, this.position.z))
     }
 
     calculateOrientationMovement () {

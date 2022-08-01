@@ -56,8 +56,8 @@ function generateSphere(nlatitudes, nlongitudes, radius) {
  * @param {Vector3} obj_center
  * @returns 
  */
-export function checkSphereDistance (index, obj_center, sphere) {
-  let s_pos = sphere.buildMatrix(index)
+export function checkSphereDistance (index, obj_center, sphere, translation_offset) {
+  let s_pos = sphere.buildMatrixOtherTranslation(index, translation_offset)
 
   let s_point = s_pos.multiplyVector (sphere.centroid)
   let o_point = obj_center //o_pos.multiplyVector (object.centroid)
