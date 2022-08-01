@@ -639,7 +639,6 @@ function setTriVaoGroupObj (group_index, obj_index, space_obj, scale_factor)
   {
     let group = interactables[group_index]
     
-    console.log (solarsystem_scale)
     if (space_obj.parent != null)
       space_obj.soi = (space_obj.orbit_radius)  
         * Math.pow(space_obj.mass/space_obj.parent.mass, 2/5) * solarsystem_scale
