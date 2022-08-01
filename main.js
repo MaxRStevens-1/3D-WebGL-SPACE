@@ -47,7 +47,7 @@ let neptune_index
 
 // MIRROR SURFACE SHADER
 let shipShader
-let ship_scale = .3 * solarsystem_scale * relative_planet_size
+let ship_scale = .1 * solarsystem_scale * relative_planet_size
 let player
 let moveDelta = 1 * solarsystem_speed_scale * solarsystem_scale
 
@@ -138,7 +138,8 @@ function render() {
   shaderProgram.setUniform3fv ('lightWorldPosition', lightPosition)
   // RESET TEXTURE
   shaderProgram.setUniform1i('normTexture', 0);
-  shaderProgram.setUniform1i ('do_simple_draw', 1)
+  //shaderProgram.setUniform1i ('do_simple_draw', 1)
+  shaderProgram.setUniform1i ('do_simple_draw', 0)
   gl.depthMask(false);
   if (show_hitboxes)
   {
@@ -170,6 +171,7 @@ function render() {
       let index = current_obj.index
       if (current_obj.soi <= 0 )
         continue
+      
       let cur_scale = sun.scales[index]
       let cur_rot = sun.rotations[index]
       let cur_tran = sun.translations[index]
@@ -178,7 +180,7 @@ function render() {
       let mat = sun.buildMatrix(index)
       sun.translations[index] = cur_tran.add(cur_tran
         .sub (mat.multiplyVector(sun.centroid).xyz))
-      
+      console.log ("vec="+sun.translations[index])
       mat = sun.buildMatrixOtherTranslation(index, global_translation_offset)
       shaderProgram.setUniformMatrix4 ('worldFromModel', mat)
       sun.vao.drawIndexed(gl.TRIANGLES)
@@ -481,14 +483,11 @@ in mat4 eyeworld;
 out vec4 fragmentColor;
 
 void main() {
-  if (do_simple_draw) {
-    fragmentColor = vec4 (diffuseColor,1);
-    return;
-  }
+
   vec3 normal = normalize(mixNormal);
   vec4 lightEyePosition = eyeworld * vec4(lightWorldPosition,1);
   vec3 lightDirection = normalize (lightEyePosition.xyz - mixPosition);
-  float litness = (dot(normal, lightDirection));
+  float litness = dot(normal, lightDirection);
 
   // get normal texture
   vec4 realTexture = texture(normTexture, flat_mixTexPosition);
@@ -521,8 +520,9 @@ void main() {
   vec3 ambient = ambientFactor * albedo * diffuseColor;
   // diffuse
   vec3 diffuse = (1.0 - ambientFactor) * litness * albedo * diffuseColor * shadowFactor;
-  
   vec3 rgb = ambient + diffuse + specular;
+  if (do_simple_draw)
+    rgb = ambient + (1.0 - ambientFactor) * litness;
   fragmentColor = realTexture * vec4(rgb, 1.0); 
 }
   `;
