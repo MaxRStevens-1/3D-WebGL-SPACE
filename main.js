@@ -47,7 +47,7 @@ let neptune_index
 
 // MIRROR SURFACE SHADER
 let shipShader
-let ship_scale = .1 * solarsystem_scale * relative_planet_size
+let ship_scale = .01 * solarsystem_scale * relative_planet_size
 let player
 let moveDelta = 1 * solarsystem_speed_scale * solarsystem_scale
 
@@ -376,7 +376,7 @@ function shadowMapPass (width, height, fbo) {
 function onResizeWindow() {
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.001, 
+  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.1 * solarsystem_scale, 
     10000000 * solarsystem_scale)
 }
 
@@ -659,8 +659,10 @@ function setTriVaoGroupObj (group_index, obj_index, space_obj, scale_factor)
     
 
     space_obj.radius *= solarsystem_scale 
-    space_obj.orbit_radius *= solarsystem_scale 
-    
+    space_obj.orbit_radius *= solarsystem_scale + space_obj.radius
+    console.log ("radius " +space_obj.radius)
+    if (space_obj.parent != null)
+      space_obj.orbit_radius += space_obj.parent.radius * solarsystem_scale
     let rotation = space_obj.tilt
     let scale = space_obj.radius / scale_factor
     group.setScale (obj_index, new Vector3 (scale, scale, scale).scalarMultiply(relative_planet_size))

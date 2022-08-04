@@ -220,10 +220,10 @@ export class BoundCamera {
    */
   mouseBoundSphereUpdate (movement_x, movement_y) {
     let bound_radius = this.radius
-    let scale = bound_radius * .001
+    let scale = bound_radius * .0005
     let bound_x = this.bound_position.x
     let bound_y = this.bound_position.y
-    let test_scale = .05
+    let test_scale = .005
     let new_x = bound_x + movement_x * scale * this.x_heading
     let test_y
     if (bound_y >= 0)
