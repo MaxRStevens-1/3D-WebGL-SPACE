@@ -60,7 +60,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://example.com)
+[![Product Name Screen Shot][product-screenshot]](https://github.com/MaxRStevens-1/3D-WebGL-SPACE/blob/master/readme_sources/Ship%20Juipter.PNG)
 
 This is an Node Javascript WebGL project, no Three or Babylon, which creates an fully explorable 3D representation of our Solar System, complete with views of all 8 planets, various moons, and gravity. The time scale is 1:1440 and the size of planets in comparison to their orbits is roughly 1:1. Feel free to explore and use this in any way wanted.
 
