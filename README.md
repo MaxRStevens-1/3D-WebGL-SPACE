@@ -22,7 +22,6 @@
     <br />
     <br />
     <br />
-    <a href="https://github.com/MaxRStevens-1/3D-WebGL-SPACE">View Demo</a>
     ·
     <a href="https://github.com/MaxRStevens-1/3D-WebGL-SPACE/issues">Report Bug</a>
     ·
