@@ -76,11 +76,7 @@ This is an Node Javascript WebGL project, no Three or Babylon, which creates an 
 
 ### Prerequisites
 
-This is an example of how to list things you need to use the software and how to install them.
-* npm
-  ```sh
-  npm install npm@latest -g
-  ```
+Javascript and NodeJS are required for this project to run. Install [Node.js](https://nodejs.org/en/download/)
 
 ### Installation
 
