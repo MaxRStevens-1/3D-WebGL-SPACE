@@ -12,7 +12,7 @@
 <br />
 <div align="center">
   <a href="https://github.com/MaxRStevens-1/3D-WebGL-SPACE">
-    <img src="readme_sources/Sun Earth and MoonPNG.PNG" alt="Logo" width="400" height="400">
+    <img src="readme_sources/Sun Earth and MoonPNG.PNG" alt="Logo" width="800" height="800">
   </a>
 
 <h3 align="center">WebGL Scale Solar System</h3>
