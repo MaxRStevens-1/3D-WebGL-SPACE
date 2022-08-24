@@ -60,8 +60,7 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-[![Product Name Screen Shot][product-screenshot]](https://github.com/MaxRStevens-1/3D-WebGL-SPACE/blob/master/readme_sources/Ship%20Juipter.PNG)
-
+    <img src="readme_sources/Ship Juipter.PNG" alt="Logo" width="800" height="800">
 This is an Node Javascript WebGL project, no Three or Babylon, which creates an fully explorable 3D representation of our Solar System, complete with views of all 8 planets, various moons, and gravity. The time scale is 1:1440 and the size of planets in comparison to their orbits is roughly 1:1. Feel free to explore and use this in any way wanted.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
@@ -116,8 +115,6 @@ Pressing the 'g' key will display the Spheres of Gravitional Influence of the va
 
 Pressing the 'h' key will display the axis unaligned bounding box for all objects.
 
-Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
-
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -128,7 +125,6 @@ Additional screenshots, code examples and demos work well in this space. You may
 
 - [ ] Free Camera
 - [ ] Fixing visual artifacts at very large distance
-- [ ] Reducing oscillation of objects at very large distances
 
 See the [open issues](https://github.com/MaxRStevens-1/3D-WebGL-SPACE/issues) for a full list of proposed features (and known issues).
 
@@ -162,6 +158,5 @@ Project Link: [https://github.com/MaxRStevens-1/3D-WebGL-SPACE](https://github.c
 
 * My Professor Chris Johnson and his [Textbook](https://howto3d.twodee.org/)
 * TigerNDV for his [3D Model Spaceship](https://sketchfab.com/3d-models/mother-spaceship-9e0e86c41ed24676a7c8b25fdfa002c0)
-* []()
 
 <p align="right">(<a href="#top">back to top</a>)</p>
