@@ -636,6 +636,21 @@ async function initInteractables() {
   generateVisualHitBoxes()
 }
 
+/**
+ * Dynamically loads in object textures
+ * @param {Array of SpaceObjects}  
+ */
+async function loadTexturesFromSolarMap (space_objs, space_trivao)
+{
+  let STARTING_TEXTURE = gl.TEXTURE2
+  let folder = './textures/'
+  for (let i = 0; i < space_objs.length; i++) {
+    let current_image = await readImage (folder + space_objs[i].texture_name)
+    createTexture2d (current_image, STARTING_TEXTURE + i)
+    space_trivao.setTextureIndex (space_objs[i].index, STARTING_TEXTURE+i)
+  }
+}
+
    /**
  * Help contructs params for world matrix for object in geomotry group.
  * @param {int} group_index 

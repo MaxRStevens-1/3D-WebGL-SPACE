@@ -264,6 +264,7 @@ export class TrimeshVaoGrouping extends TrimeshVao {
     this.translations = []
     this.rotations = []
     this.scales = []
+    this.texture_indexs = []
     for (let i = 0; i < num_objects; i++)
     {
       this.translations.push (new Vector3 (0,0,0))
@@ -274,6 +275,12 @@ export class TrimeshVaoGrouping extends TrimeshVao {
   }
 
   getObject (index) {return this.objects[index]}
+
+  setTextureIndex (index, texture_index) {
+    this.texture_indexs[index] = texture_index
+  }
+
+  getTextureIndex (index) {return this.texture_indexs[index]}
 
   setObjects (index, objects) {
     this.objects = objects

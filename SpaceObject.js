@@ -10,6 +10,9 @@ export class SpaceObject {
      * @param {float} radius 
      * @param {SpaceObject} parent 
      * @param {String} name 
+     * @param {float} mass
+     * @param {Vector3} tilt
+     * @param {String} texture_name
      */
     constructor (index, rotation_speed, orbit_speed, orbit_radius, 
         orbit_theta, radius, parent, name, mass, tilt, texture_name) {
@@ -27,6 +30,7 @@ export class SpaceObject {
             this.tilt = tilt
             this.satellite_map = new Map()
             this.soi = 0
+            this.texture_name = texture_name
         }
 
     /**
@@ -101,22 +105,24 @@ export class SpaceObject {
     let object_list = []
     for (let i = 0; i < split_objects.length; i++) {
       let split_attributes = split_objects[i].split (',')
-      if (split_attributes.length != 12)
+      if (split_attributes.length != 13)
         continue
       // set strings to #'s
       for (let x = 1; x < split_attributes.length; x++) {
-        if (x == 10)
+        // Strings not #s
+        if (x == 10 || x == 11)
           continue 
         split_attributes[x] = Number(split_attributes[x])
       }
       let tilt  = new Vector3 (split_attributes[7], split_attributes[8], 
         split_attributes[9])
       let parent = split_attributes[10]
+      let texture_name = split_attributes[11]
       if (parent.length < 1 || parent == 'null')
         parent = null
       let current_object = new SpaceObject (i, split_attributes[2], 
         split_attributes[3], split_attributes[4], split_attributes[5], split_attributes[1],
-        parent, split_attributes[0], split_attributes[6], tilt)
+        parent, split_attributes[0], split_attributes[6], tilt, texture_name)
       if (current_object.parent != null) {
         object_map.get (current_object.parent).addSatellite (current_object)
         current_object.parent = object_map.get (current_object.parent)
