@@ -204,8 +204,7 @@ function render() {
   shaderProgram.setUniform3f('diffuseColor', .99, .99, .1)
   shaderProgram.setUniform1f('shininess', 100000000000000)
   shaderProgram.setUniform1f('ambientFactor', .99)
-  shaderProgram.setUniform1i('normTexture', 3);
-  
+  shaderProgram.setUniform1i('normTexture', interactables[celestial_bodies_index].getTextureIndex(sun_index));
   let sun_position = sphere_vao.buildMatrixOtherTranslation(sun_index, global_translation_offset)
   shaderProgram.setUniformMatrix4 ('worldFromModel', sun_position)
   sphere_vao.vao.bind()
@@ -227,10 +226,11 @@ function render() {
         if (i == 1)
           continue
         const pos = interactable.buildMatrixOtherTranslation(j, global_translation_offset)
+        const texture_index = interactable.getTextureIndex (j)
         // SET AS ATTRIBUTE
         shaderProgram.setUniformMatrix4('worldFromModel', pos)
         // sphere index
-        if (i == celestial_bodies_index && j == earth_index)
+        /*if (i == celestial_bodies_index && j == earth_index)
           shaderProgram.setUniform1i('normTexture', 2);
         if (i == celestial_bodies_index && j == moon_index)
           shaderProgram.setUniform1i('normTexture', 4);
@@ -247,7 +247,11 @@ function render() {
         if (i == celestial_bodies_index && j == uranus_index)
           shaderProgram.setUniform1i ('normTexture', 10)
         if (i == celestial_bodies_index && j == neptune_index)
-          shaderProgram.setUniform1i ('normTexture', 11)
+          shaderProgram.setUniform1i ('normTexture', 11)*/
+        if (i == celestial_bodies_index) 
+        {
+          shaderProgram.setUniform1i ('normTexture', texture_index)
+        }
         interactable.vao.drawIndexed(gl.TRIANGLES)
 
       }
@@ -411,6 +415,7 @@ async function initialize() {
   // SKYBOX TEXTURE 
   await loadCubemap ("./bkg/lightblue", "png", gl.TEXTURE1)
   // BODY TEXTURES
+  /*
   const earthImage = await readImage(folder+'earthmap1k.jpg')
   createTexture2d (earthImage, gl.TEXTURE2)
   const sunImage = await readImage (folder+'sunmap.jpg')
@@ -431,6 +436,7 @@ async function initialize() {
   createTexture2d (uraImage, gl.TEXTURE10)
   const nepImage = await readImage (folder+'neptunemap.jpg')
   createTexture2d (nepImage, gl.TEXTURE11)
+  */
 
   const vertexSource = `
 uniform mat4 clipFromEye;
@@ -616,7 +622,7 @@ async function initInteractables() {
   let spheres = generateSphereObject (20, 20, scale_factor, 3, space_objs.length, shaderProgram)
   interactables.push (spheres)
   let sun = space_objs[sun_index]
-  mecury_index = sun_index +1
+  /*mecury_index = sun_index +1
   venus_index = mecury_index + 1
   earth_index = venus_index + 1
   mars_index = earth_index + 1
@@ -625,29 +631,46 @@ async function initInteractables() {
   uranus_index  = saturn_index + 1
   neptune_index  = uranus_index + 1
   moon_index = neptune_index + 1
+  */
+
   interactables[celestial_bodies_index].addToObjects (sun)
   lightPosition = interactables[celestial_bodies_index].buildMatrixOtherTranslation(sun_index, global_translation_offset)
     .multiplyVector (interactables[0].centroid).xyz
   for (let i = space_objs.length - 1; i >= 0; i--) {
     setTriVaoGroupObj (celestial_bodies_index, i, space_objs[i], scale_factor)
   }
+  await loadTexturesFromSolarMap (space_objs, interactables[celestial_bodies_index])
   setSatelliteHashTable (sun)
   // GENERATE HITBOXES
   generateVisualHitBoxes()
 }
 
 /**
- * Dynamically loads in object textures
+ * Dynamically loads in object textures, 
+ * and sets their gl texture index in their trivao grouping
  * @param {Array of SpaceObjects}  
+ * @param {TrimeshVaoGrouping}
  */
 async function loadTexturesFromSolarMap (space_objs, space_trivao)
 {
   let STARTING_TEXTURE = gl.TEXTURE2
+  let texture_offset = 2
   let folder = './textures/'
+  let texture_hashmap = new Map()
   for (let i = 0; i < space_objs.length; i++) {
+    if (texture_hashmap.has(space_objs[i].texture_name)) {
+      space_trivao.setTextureIndex (space_objs[i].index,
+         texture_hashmap.get(space_objs[i].texture_name))
+      continue
+    }
+
     let current_image = await readImage (folder + space_objs[i].texture_name)
     createTexture2d (current_image, STARTING_TEXTURE + i)
-    space_trivao.setTextureIndex (space_objs[i].index, STARTING_TEXTURE+i)
+    space_trivao.setTextureIndex (space_objs[i].index, i + texture_offset)
+    console.log ("space obj = " +space_objs[i].name)
+    console.log ("texture = " + i + texture_offset)
+    console.log ("texture name = " + space_objs[i].texture_name)
+    texture_hashmap.set (space_objs[i].texture_name, i + texture_offset)
   }
 }
 
