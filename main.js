@@ -380,7 +380,7 @@ function shadowMapPass (width, height, fbo) {
 function onResizeWindow() {
   canvas.width = canvas.clientWidth
   canvas.height = canvas.clientHeight
-  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.1 * solarsystem_scale, 
+  clipFromEye = Matrix4.fovPerspective(45, canvas.width / canvas.height, 0.01 * solarsystem_scale, 
     10000000 * solarsystem_scale)
 }
 

@@ -170,6 +170,7 @@ export class BoundCamera {
     this.time_delta = time_delta
     this.bound_position = new Vector3 (0,0,0)
     this.radius = 0
+    this.base_radius = 0
     this.x_heading = 1
     this.z_heading = 1
     this.distance_multiplier = 3
@@ -183,7 +184,7 @@ export class BoundCamera {
    * @param {float} scale 
    */
   moveCameraCloser (scale) {
-    if (this.radius * .9 > this.base_scale_amount * scale * 2)  
+    if (this.radius * .9 > this.base_radius)  
     {
       this.radius *= .9
       this.base_distance_offset *= .9
@@ -209,6 +210,8 @@ export class BoundCamera {
     this.vao_group = vao_group
     this.bound_obj_index = index
     this.radius = radius * this.distance_multiplier + this.base_distance_offset * scale
+    this.base_radius = radius * scale * 1000
+    console.log (this.base_radius)
     this.bound_position = new Vector3 (0,0,0)
     this.updateBoundSpherePosition (translation_offset)
   }
@@ -223,7 +226,7 @@ export class BoundCamera {
     let scale = bound_radius * .0005
     let bound_x = this.bound_position.x
     let bound_y = this.bound_position.y
-    let test_scale = .005
+    let test_scale = .00005
     let new_x = bound_x + movement_x * scale * this.x_heading
     let test_y
     if (bound_y >= 0)
