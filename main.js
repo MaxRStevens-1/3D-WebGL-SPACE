@@ -622,8 +622,6 @@ async function initInteractables() {
   let spheres = generateSphereObject (20, 20, scale_factor, 3, space_objs.length, shaderProgram)
   interactables.push (spheres)
   let sun = space_objs[sun_index]
-  console.log (sun)
-  console.log (space_objs)
   interactables[celestial_bodies_index].addToObjects (sun)
   lightPosition = interactables[celestial_bodies_index].buildMatrixOtherTranslation(sun_index, global_translation_offset)
     .multiplyVector (interactables[0].centroid).xyz
