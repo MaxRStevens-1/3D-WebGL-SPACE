@@ -100,15 +100,18 @@ export class SpaceObject {
  */
  export function parseSolarMap (solarString) {
     solarString = solarString.replaceAll ('\r','')
+    console.log (solarString)
     let split_objects = solarString.split ('\n')
     let object_map = new Map()
     let object_list = []
     for (let i = 0; i < split_objects.length; i++) {
       let split_attributes = split_objects[i].split (',')
+      console.log (split_attributes)
       if (split_attributes.length != 13)
         continue
       // set strings to #'s
       for (let x = 1; x < split_attributes.length; x++) {
+        console.log ("current element is" + split_attributes[x])
         // Strings not #s
         if (x == 10 || x == 11)
           continue 
