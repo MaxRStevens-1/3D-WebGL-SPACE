@@ -32,9 +32,9 @@ let skyboxShaderProgram
 let skyboxVao
 
 // PLANETS / SUN
-let solarsystem_scale = .01
+let solarsystem_scale = 1
 let relative_planet_size = 1
-let solarsystem_speed_scale = 10
+let solarsystem_speed_scale = 1
 let earth_index
 let moon_index
 let mecury_index
@@ -606,7 +606,6 @@ async function initInteractables() {
   let spheres = generateSphereObject (20, 20, scale_factor, 3, space_objs.length, shaderProgram)
   interactables.push (spheres)
   let sun = space_objs[sun_index]
-
   interactables[celestial_bodies_index].addToObjects (sun)
   lightPosition = interactables[celestial_bodies_index].buildMatrixOtherTranslation(sun_index, global_translation_offset)
     .multiplyVector (interactables[0].centroid).xyz
