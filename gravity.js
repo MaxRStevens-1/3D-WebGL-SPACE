@@ -1,6 +1,10 @@
 import { checkSphereDistance } from './sphere'
 import { TrimeshVaoGrouping } from './trimesh'
 import { Matrix4 } from './matrix'
+
+// done to create more 'realistic' gravity, have easier time getting trapped in orbits w/ higher gravity
+const GRAVITY_INCREASE_SCALE = 10
+
 /**
  * Moves player by the gravity of specified object.
  * @param {SpaceObject} object 
@@ -32,7 +36,7 @@ import { Matrix4 } from './matrix'
  * @returns rough force of gravity float
  */
  function forceOfGravity (distance, mass, scale) {
-    let force = (mass)/Math.pow(distance,2) * scale 
+    let force = (mass)/Math.pow(distance,2) * scale * GRAVITY_INCREASE_SCALE
     return force
 } 
 
@@ -52,6 +56,7 @@ import { Matrix4 } from './matrix'
 */
  export function gravityUpdate (object, trivao_group, ship, ship_position,
      ship_center, bodies, scale, player, translation_offset) {
+      
     let objectWithinDistance = null
     let withinDistance = -1
     if (object.num_satellites > 0 && object.satellites != null) {

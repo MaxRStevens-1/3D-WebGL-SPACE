@@ -32,9 +32,9 @@ let skyboxShaderProgram
 let skyboxVao
 
 // PLANETS / SUN
-let solarsystem_scale = .001
+let solarsystem_scale = .01
 let relative_planet_size = 1
-let solarsystem_speed_scale = .1
+let solarsystem_speed_scale = 10
 let earth_index
 let moon_index
 let mecury_index
@@ -139,7 +139,7 @@ function render() {
   // RESET TEXTURE
   shaderProgram.setUniform1i('normTexture', 0);
   //shaderProgram.setUniform1i ('do_simple_draw', 1)
-  shaderProgram.setUniform1i ('do_simple_draw', 0)
+  //shaderProgram.setUniform1i ('do_simple_draw', 0)
   gl.depthMask(false);
   if (show_hitboxes)
   {
@@ -175,10 +175,10 @@ function render() {
       if (current_obj.soi <= 0 )
         continue
       let distance = checkSphereDistance (index, ship_center, sphere_vao, global_translation_offset)
-      if (distance > 4000 * solarsystem_scale)
-        shaderProgram.setUniform1i ('do_simple_draw', 1)
-      else
-        shaderProgram.setUniform1i ('do_simple_draw', 0)
+      //if (distance > 4000 * solarsystem_scale)
+      //  shaderProgram.setUniform1i ('do_simple_draw', 1)
+      //else
+      //  shaderProgram.setUniform1i ('do_simple_draw', 0)
       let cur_scale = sphere_vao.scales[index]
       let cur_rot = sphere_vao.rotations[index]
       let cur_tran = sphere_vao.translations[index]
@@ -199,7 +199,7 @@ function render() {
   }
 
 
-  shaderProgram.setUniform1i ('do_simple_draw', 0)
+  //shaderProgram.setUniform1i ('do_simple_draw', 0)
   shaderProgram.setUniform3f('specularColor', .99, .99, .1)
   shaderProgram.setUniform3f('diffuseColor', .99, .99, .1)
   shaderProgram.setUniform1f('shininess', 100000000000000)
@@ -415,28 +415,6 @@ async function initialize() {
   // SKYBOX TEXTURE 
   await loadCubemap ("./bkg/lightblue", "png", gl.TEXTURE1)
   // BODY TEXTURES
-  /*
-  const earthImage = await readImage(folder+'earthmap1k.jpg')
-  createTexture2d (earthImage, gl.TEXTURE2)
-  const sunImage = await readImage (folder+'sunmap.jpg')
-  createTexture2d (sunImage, gl.TEXTURE3)
-  const moonImage = await readImage (folder+'moon.png')
-  createTexture2d (moonImage, gl.TEXTURE4)
-  const mercImage = await readImage (folder+'mercurymap.jpg')
-  createTexture2d (mercImage, gl.TEXTURE5)
-  const venusImage = await readImage (folder+'venusmap.jpg')
-  createTexture2d (venusImage, gl.TEXTURE6)
-  const marsImage = await readImage (folder+'mars_1k_color.jpg')
-  createTexture2d (marsImage, gl.TEXTURE7)
-  const jupImage = await readImage (folder+'jupitermap.jpg')
-  createTexture2d (jupImage, gl.TEXTURE8)
-  const satImage = await readImage (folder+'saturnmap.jpg')
-  createTexture2d (satImage, gl.TEXTURE9)
-  const uraImage = await readImage (folder+'uranusmap.jpg')
-  createTexture2d (uraImage, gl.TEXTURE10)
-  const nepImage = await readImage (folder+'neptunemap.jpg')
-  createTexture2d (nepImage, gl.TEXTURE11)
-  */
 
   const vertexSource = `
 uniform mat4 clipFromEye;
@@ -470,6 +448,13 @@ void main() {
   `;
 
   const fragmentSource = `
+
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+  precision highp float;
+#else
+  precision mediump float;
+#endif
+
 uniform vec3 diffuseColor;
 uniform vec3 specularColor;
 uniform vec3 lightWorldPosition;
@@ -477,7 +462,6 @@ uniform vec3 lightWorldPosition;
 uniform float shininess;
 uniform float ambientFactor;
 
-uniform bool do_simple_draw;
 
 
 uniform sampler2D normTexture;
@@ -496,7 +480,7 @@ out vec4 fragmentColor;
 
 void main() {
 
-  if (do_simple_draw) {
+  if (false) {
     fragmentColor = vec4(diffuseColor, 1.0); 
     return;
   }
@@ -596,14 +580,14 @@ async function initializeObjects() {
   let ship = createObject (lines, shipShader)
   objects.push (ship)
     // SHIPS OFFSET CALCULATION
-  let ship_offset = new Vector3(10,10,0)
+  let ship_offset = new Vector3 (10, 10, 0)
   ship_offset.add (ship.centroid)
   let ship_position = new Vector3 (1000, 1000, 1000).scalarMultiply (solarsystem_scale)
   ship.setTranslation (player_index, ship_position)
   let scale = new Vector3(ship_scale, ship_scale, ship_scale)
   ship.setScale (player_index, scale)
   player = new PlayerObject (ship, player_index, ship_position, 0.1, 0.2, 
-    new Vector3(0, 10, -30).scalarMultiply (4))
+    new Vector3 (0, 10, -30).scalarMultiply(4))
 }
 
 /**
@@ -622,16 +606,6 @@ async function initInteractables() {
   let spheres = generateSphereObject (20, 20, scale_factor, 3, space_objs.length, shaderProgram)
   interactables.push (spheres)
   let sun = space_objs[sun_index]
-  /*mecury_index = sun_index +1
-  venus_index = mecury_index + 1
-  earth_index = venus_index + 1
-  mars_index = earth_index + 1
-  juipter_index = mars_index + 1
-  saturn_index  = juipter_index + 1
-  uranus_index  = saturn_index + 1
-  neptune_index  = uranus_index + 1
-  moon_index = neptune_index + 1
-  */
 
   interactables[celestial_bodies_index].addToObjects (sun)
   lightPosition = interactables[celestial_bodies_index].buildMatrixOtherTranslation(sun_index, global_translation_offset)
@@ -792,16 +766,16 @@ function updateEverything(now) {
   lightTarget = camera.position
 
   
-if (!bound_camera_mode) {
-  player.calculatePositionMovement()
-  let ship_world = player.trivao.buildMatrix(player.index)
-  let cam_pos = ship_world.multiplyVector(player.centroid.add (player.camera_offset)).xyz
-  
-  let cam_to = ship_world.multiplyVector(player.centroid).xyz
-  camera = new SlideCamera (cam_pos, cam_to, new Vector3(0,1,0), camera_slide_theta)
-  player.calculateOrientationMovement()
-  global_translation_offset = player.position
-}
+  if (!bound_camera_mode) {
+    player.calculatePositionMovement()
+    let ship_world = player.trivao.buildMatrix(player.index)
+    let cam_pos = ship_world.multiplyVector(player.centroid.add (player.camera_offset)).xyz
+    
+    let cam_to = ship_world.multiplyVector(player.centroid).xyz
+    camera = new SlideCamera (cam_pos, cam_to, new Vector3(0,1,0), camera_slide_theta)
+    player.calculateOrientationMovement()
+    global_translation_offset = player.position
+  }
   // CHECK IF PLAYER CAN MOVE
   if (checkCollision (player.trivao)) {
     player.resetVelocity()
@@ -822,7 +796,7 @@ if (!bound_camera_mode) {
   lightPosition = interactables[celestial_bodies_index].buildMatrixOtherTranslation(sun_index, global_translation_offset)
   .multiplyVector (interactables[0].centroid).xyz
 
-  getTextFromWorld ()
+  getTextFromWorld()
   renderDepths(textDim, textDim, fbo)
   render()
   requestAnimationFrame(updateEverything)
@@ -932,10 +906,10 @@ function checkCollision (object, index) {
 
 /** 
  * assumes bounding boxes are axis aligned
- * checks if one bb lies within all other bbs
+ * checks if one bb lies within any other bb
  * @param {*} input_obj
  * @param {*} pos_mat
- * @returns T if is within BB, F if not
+ * @returns T if is within an BB, F if not
  */
 function checkObjectToObjectCollision (input_obj, pos_mat) {
   for (let i = 0; i < interactables.length - 1; i++) {
@@ -1017,7 +991,10 @@ function onKeyDown(event) {
   } if (event.key === 'ArrowRight' || event.key == 'd' || keysPressed.d) {
     player.addVelocityRight (-moveDelta * fps_scaling)
     keysPressed.d = true
-  } if (event.key == 'q') {
+
+  } 
+  // for roll, not used due to gimbal lock
+  if (event.key == 'q') {
   } if (event.key == 'e') {
   } if (event.key == '=' || keysPressed.up) {
     if (!bound_camera_mode) {
